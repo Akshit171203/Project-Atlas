@@ -2,10 +2,9 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
-
 
 class Document(Base):
     __tablename__ = "documents"
@@ -21,5 +20,11 @@ class Document(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+    )
+    
+    chunks = relationship(
+    "Chunk",
+    back_populates="document",
+    cascade="all, delete-orphan",
     )

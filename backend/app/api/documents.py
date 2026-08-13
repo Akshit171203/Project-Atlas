@@ -1,40 +1,31 @@
-from pathlib import Path
+from fastapi import APIRouter, Depends, File, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi import APIRouter, File, UploadFile
+from app.api.dependencies import get_db
+from app.services.ingestion import IngestionService
 
-from app.services.chunking import ChunkingService
-from app.services.pdf_parser import PDFParser
+router = APIRouter(
+    prefix="/documents",
+    tags=["Documents"],
+)
 
-router = APIRouter(prefix="/documents", tags=["Documents"])
-
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
-
-parser = PDFParser()
-chunking_service = ChunkingService()
+ingestion_service = IngestionService()
 
 
 @router.post("/upload")
-async def upload_document(file: UploadFile = File(...)):
-    file_path = UPLOAD_DIR / (file.filename or "unknown_file.pdf")
+async def upload_document(
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db),
+):
 
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
-
-    document = parser.parse(
-        pdf_path=str(file_path),
-        filename=file.filename,
+    document, chunks = await ingestion_service.ingest(
+        session=session,
+        file=file,
     )
 
-    chunks = chunking_service.chunk_document(document)
-   
-    for chunk in chunks:
-        print(f"{chunk.id} -> {len(chunk.text)} chars")
-
     return {
+        "document_id": document.id,
         "filename": document.filename,
         "pages": document.total_pages,
-        "total_chunks": len(chunks),
-        "first_chunk": chunks[0].text,
-        "last_chunk": chunks[-1].text,
+        "chunks": len(chunks),
     }

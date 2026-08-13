@@ -20,7 +20,7 @@ settings = Settings()
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=True,
+    echo=False,
 )
 
 SessionLocal = async_sessionmaker(
