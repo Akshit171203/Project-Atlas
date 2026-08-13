@@ -2,7 +2,7 @@ import fitz
 from app.schemas.document import Page, DocumentContent
 
 class PDFParser:
-    def parse_pdf(self, pdf_path: str) -> DocumentContent:
+    def parse(self, pdf_path: str, filename: str | None = None) -> DocumentContent:
         document = fitz.open(pdf_path)
 
         pages = []
@@ -19,7 +19,7 @@ class PDFParser:
         document.close()
 
         return DocumentContent(
-            filename=pdf_path,
+            filename=filename or pdf_path,
             total_pages=len(pages),
             pages=pages,
         )
