@@ -1,11 +1,10 @@
-from pymupdf import _apply_pages
 from app.schemas.chunk import Chunk
 from app.schemas.document import DocumentContent
 
 
 class ChunkingService:
 
-    def chunk_document(
+    def chunk(
         self,
         document: DocumentContent,
         chunk_size: int = 500,
@@ -37,7 +36,6 @@ class ChunkingService:
 
                 chunks.append(
                     Chunk(
-                        id=f"{page.page_number}-{chunk_index}",
                         page_number=page.page_number,
                         chunk_index=chunk_index,
                         text=chunk_text,

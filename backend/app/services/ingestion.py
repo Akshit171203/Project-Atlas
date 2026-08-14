@@ -5,15 +5,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.chunk_repository import ChunkRepository
 from app.repositories.document_repository import DocumentRepository
+from app.schemas.document import DocumentRecord
+from app.schemas.ingestion import IngestionResult
 from app.services.chunking import ChunkingService
-from app.services.pdf_parser import PDFParser
+from app.services.parser import ParserService
+from app.services.storage import StorageService
 
 
 class IngestionService:
 
     def __init__(self):
-        self.parser = PDFParser()
+        self.parser = ParserService()
         self.chunker = ChunkingService()
+        self.storage = StorageService()
 
         self.document_repository = DocumentRepository()
         self.chunk_repository = ChunkRepository()
@@ -22,36 +26,39 @@ class IngestionService:
         self,
         session: AsyncSession,
         file: UploadFile,
-    ):
+    ) -> IngestionResult:
 
-        upload_dir = Path("uploads")
-        upload_dir.mkdir(exist_ok=True)
+        file_path = await self.storage.save(file)
 
-        filename = file.filename or "unknown.pdf"
-        file_path = upload_dir / filename
+        try:
+            filename = file.filename or "unknown.pdf"
 
-        with open(file_path, "wb") as buffer:
-            buffer.write(await file.read())
+            document_content = self.parser.parse(
+                file_path=file_path,
+                filename=filename,
+            )
 
-        document_content = self.parser.parse(
-            pdf_path=str(file_path),
-            filename=filename,
-        )
+            chunks = self.chunker.chunk(document_content)
 
-        chunks = self.chunker.chunk_document(document_content)
+            document = await self.document_repository.create(
+                session=session,
+                filename=document_content.filename,
+                total_pages=document_content.total_pages,
+            )
 
-        document = await self.document_repository.create(
-            session=session,
-            filename=document_content.filename,
-            total_pages=document_content.total_pages,
-        )
+            await self.chunk_repository.create_many(
+                session=session,
+                document_id=document.id,
+                chunks=chunks,
+            )
 
-        await self.chunk_repository.create_many(
-            session=session,
-            document_id=document.id,
-            chunks=chunks,
-        )
+            await session.commit()
 
-        await session.commit()
-
-        return document, chunks
+            return IngestionResult(
+                document=DocumentRecord.model_validate(document),
+                chunks=chunks,
+            )
+        except Exception:
+            # Clean up the saved file if anything downstream fails
+            file_path.unlink(missing_ok=True)
+            raise
