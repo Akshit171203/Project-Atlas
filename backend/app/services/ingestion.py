@@ -28,25 +28,22 @@ class IngestionService:
         file: UploadFile,
     ) -> IngestionResult:
 
-        file_path = await self.storage.save(file)
+        stored_file = await self.storage.save(file)
 
         try:
-            filename = file.filename or "unknown.pdf"
-
             document_content = self.parser.parse(
-                file_path=file_path,
-                filename=filename,
+                stored_file=stored_file,
             )
 
             chunks = self.chunker.chunk(document_content)
 
-            document = await self.document_repository.create(
+            document = await self.document_repository.save(
                 session=session,
                 filename=document_content.filename,
                 total_pages=document_content.total_pages,
             )
 
-            await self.chunk_repository.create_many(
+            await self.chunk_repository.save_many(
                 session=session,
                 document_id=document.id,
                 chunks=chunks,
@@ -60,5 +57,5 @@ class IngestionService:
             )
         except Exception:
             # Clean up the saved file if anything downstream fails
-            file_path.unlink(missing_ok=True)
+            stored_file.path.unlink(missing_ok=True)
             raise

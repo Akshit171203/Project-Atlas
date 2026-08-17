@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.schemas.document import DocumentContent
+from app.schemas.storage import StoredFile
 from app.services.pdf_parser import PDFParser
 
 
@@ -10,16 +11,15 @@ class ParserService:
 
     def parse(
         self,
-        file_path: Path,
-        filename: str,
+        stored_file: StoredFile,
     ) -> DocumentContent:
 
-        suffix = file_path.suffix.lower()
+        suffix = stored_file.extension
 
         if suffix == ".pdf":
             return self.pdf_parser.parse(
-                pdf_path=str(file_path),
-                filename=filename,
+                pdf_path=str(stored_file.path),
+                filename=stored_file.filename,
             )
 
         raise ValueError(f"Unsupported file type: {suffix}")

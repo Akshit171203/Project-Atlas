@@ -5,7 +5,7 @@ from app.models.document import Document
 
 class DocumentRepository:
 
-    async def create(
+    async def save(
         self,
         session: AsyncSession,
         filename: str,
@@ -23,3 +23,17 @@ class DocumentRepository:
         await session.flush()
 
         return document
+
+    async def get(
+        self,
+        session: AsyncSession,
+        document_id: int,
+    ) -> Document | None:
+        raise NotImplementedError()
+
+    async def delete(
+        self,
+        session: AsyncSession,
+        document_id: int,
+    ) -> None:
+        raise NotImplementedError()

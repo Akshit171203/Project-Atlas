@@ -6,7 +6,7 @@ from app.schemas.chunk import Chunk as ChunkSchema
 
 class ChunkRepository:
 
-    async def create_many(
+    async def save_many(
         self,
         session: AsyncSession,
         document_id: int,
