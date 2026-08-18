@@ -25,7 +25,7 @@ async def upload_document(
         )
 
     try:
-        result = await ingestion_service.ingest(
+        document, chunks, embedding_count = await ingestion_service.ingest(
             session=session,
             file=file,
         )
@@ -38,8 +38,9 @@ async def upload_document(
         )
 
     return {
-        "document_id": result.document.id,
-        "filename": result.document.filename,
-        "pages": result.document.total_pages,
-        "chunks": len(result.chunks),
+        "document_id": document.id,
+        "filename": document.filename,
+        "pages": document.total_pages,
+        "chunks": len(chunks),
+        "embeddings": embedding_count,
     }

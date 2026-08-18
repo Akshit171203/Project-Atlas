@@ -10,6 +10,7 @@ from app.schemas.ingestion import IngestionResult
 from app.services.chunking import ChunkingService
 from app.services.parser import ParserService
 from app.services.storage import StorageService
+from app.services.embedding_pipeline import EmbeddingPipeline
 
 
 class IngestionService:
@@ -21,12 +22,13 @@ class IngestionService:
 
         self.document_repository = DocumentRepository()
         self.chunk_repository = ChunkRepository()
+        self.embedding_pipeline = EmbeddingPipeline()
 
     async def ingest(
         self,
         session: AsyncSession,
         file: UploadFile,
-    ) -> IngestionResult:
+    ):
 
         stored_file = await self.storage.save(file)
 
@@ -43,18 +45,20 @@ class IngestionService:
                 total_pages=document_content.total_pages,
             )
 
-            await self.chunk_repository.save_many(
+            await self.chunk_repository.create_many(
                 session=session,
                 document_id=document.id,
                 chunks=chunks,
             )
 
+            embedding_count = await self.embedding_pipeline.embed_document(
+                session=session,
+                document_id=document.id,
+            )
+
             await session.commit()
 
-            return IngestionResult(
-                document=DocumentRecord.model_validate(document),
-                chunks=chunks,
-            )
+            return document, chunks, embedding_count
         except Exception:
             # Clean up the saved file if anything downstream fails
             stored_file.path.unlink(missing_ok=True)
