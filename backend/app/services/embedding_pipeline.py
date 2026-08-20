@@ -2,13 +2,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.chunk_repository import ChunkRepository
 from app.repositories.embedding_repository import EmbeddingRepository
-from app.services.embedding import LocalEmbeddingProvider
+from app.services.embedding import embedding_model
 
 
 class EmbeddingPipeline:
 
     def __init__(self):
-        self.provider = LocalEmbeddingProvider()
+        self.provider = embedding_model
         self.chunk_repository = ChunkRepository()
         self.embedding_repository = EmbeddingRepository()
 

@@ -17,3 +17,6 @@ class LocalEmbeddingProvider:
         )
 
         return embeddings.tolist()
+
+# Shared model instance
+embedding_model = LocalEmbeddingProvider()
