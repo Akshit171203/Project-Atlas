@@ -2,39 +2,37 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.embedding_repository import EmbeddingRepository
 from app.schemas.retrieval import RetrievedChunk
-from app.services.embedding import embedding_model
+from app.services.keyword_search import prepare_keyword_query
 
 
-class Retriever:
+class KeywordRetriever:
 
     def __init__(self):
-        self.embedding_provider = embedding_model
-        self.embedding_repository = EmbeddingRepository()
+        self.repository = EmbeddingRepository()
 
     async def retrieve(
         self,
         session: AsyncSession,
         query: str,
-        top_k: int = 5,
+        top_k: int = 20,
         document_id: int | None = None,
     ) -> list[RetrievedChunk]:
 
-        query_vector = self.embedding_provider.embed(
-            [query]
-        )[0]
+        keyword_query = prepare_keyword_query(query)
 
-        results = await self.embedding_repository.search_similar(
+        if not keyword_query:
+            return []
+
+        results = await self.repository.search_keyword(
             session=session,
-            query_vector=query_vector,
+            query=keyword_query,
             top_k=top_k,
             document_id=document_id,
         )
 
         retrieved_chunks = []
 
-        for chunk, distance in results:
-
-            similarity = 1 - distance
+        for chunk, score in results:
 
             retrieved_chunks.append(
                 RetrievedChunk(
@@ -44,7 +42,7 @@ class Retriever:
                     page_number=chunk.page_number,
                     chunk_index=chunk.chunk_index,
                     text=chunk.text,
-                    similarity=similarity,
+                    similarity=float(score),
                 )
             )
 

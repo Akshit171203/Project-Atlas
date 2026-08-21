@@ -1,0 +1,585 @@
+--- CHUNK 1 ---
+Hello World! This is a test PDF.
+
+
+--- CHUNK 2 ---
+Sample PDF Document
+Robert Maron
+Grzegorz Grudzi´nski
+February 20, 1999
+
+
+--- CHUNK 3 ---
+2
+
+
+--- CHUNK 4 ---
+Contents
+1
+Template
+5
+1.1
+How to compile a .tex ﬁle to a .pdf ﬁle . . . . . . . . . . . . .
+5
+1.1.1
+Tools
+. . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5
+1.1.2
+How to use the tools
+. . . . . . . . . . . . . . . . . . . .
+5
+1.2
+How to write a document . . . . . . . . . . . . . . . . . . . . . .
+6
+1.2.1
+The main document . . . . . . . . . . . . . . . . . . . . .
+6
+1.2.2
+Chapters
+. . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+1.2.3
+Spell-checking . . . . . . . . . . . . . . . . . .
+
+
+--- CHUNK 5 ---
+Spell-checking . . . . . . . . . . . . . . . . . . . . . . .
+6
+1.3
+LATEX and pdfLATEX capabilities . . . . . . . . . . . . . . . . . . .
+7
+1.3.1
+Overview . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+1.3.2
+LATEX . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+1.3.3
+pdfLATEX
+. . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+1.3.4
+Examples . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+3
+
+
+--- CHUNK 6 ---
+4
+CONTENTS
+
+
+--- CHUNK 7 ---
+Chapter 1
+Template
+1.1
+How to compile a .tex ﬁle to a .pdf ﬁle
+1.1.1
+Tools
+To process the ﬁles you (may) need:
+• pdflatex (for example from tetex package ≥0.9-6, which you can
+get from Red Hat 5.2);
+• acroread (a PDF viewer, available from http://www.adobe.com/);
+• ghostscript ≥5.10 (for example from Red Hat Contrib) and ghostview
+or gv (from RedHat Linux);
+• efax package could be useful, if you plan to fax documents.
+1.1.2
+How to use the tools
+Follow these steps:
+1. put all source .tex ﬁles in
+
+
+--- CHUNK 8 ---
+ollow these steps:
+1. put all source .tex ﬁles in one directory, then chdir to the directory (or put
+some of them in the LATEXsearch path — if you know how to do this);
+2. run “pdflatex file.tex” on the main ﬁle of the document three times
+(three — to prepare valid table of contents);
+3. to see or print the result use acroread (unfortunately some versions of
+acroread may produce PostScript which is too complex), or
+5
+
+
+--- CHUNK 9 ---
+6
+CHAPTER 1. TEMPLATE
+4. run ghostscript: “gv file.pdf” to display or:
+“gs -dNOPAUSE -sDEVICE=pswrite -q -dBATCH -sOutputFile=ﬁle.ps ﬁle.pdf”
+to produce a PostScript ﬁle;
+5. run “fax send phone-number file.ps” as root to send a fax, or — if you
+know how to do this — modify the fax script to be able to fax .pdf ﬁles directly
+(you have to insert “|%PDF*” somewhere. . .).
+1.2
+How to write a document
+1.2.1
+The main document
+Choose the name of the document, say document. Copy template.tex to
+
+
+--- CHUNK 10 ---
+ument, say document. Copy template.tex to
+document.tex, then edit it, change the title, the authors and set proper in-
+clude(s) for all the chapters.
+1.2.2
+Chapters
+Each chapter should be included in the main document as a separate ﬁle. You can
+choose any name for the ﬁle, but we suggest adding a sufﬁx to the name of the
+main ﬁle. For our example we use the ﬁle name document_chapter1.tex.
+First, copy template_chapter.tex to document_chapter1.tex
+and add the line
+\include{document_chapter1}
+in
+
+
+--- CHUNK 11 ---
+and add the line
+\include{document_chapter1}
+in the document.tex, then edit document_chapter1.tex, change the
+chapter title and edit the body of the chapter appropriately.
+1.2.3
+Spell-checking
+Do use a spell-checker, please!
+You may also want to check grammar, style and so on. Actually you should
+do it (if you have enough spare time). But you must check spelling!
+You can use the ispell package for this, from within emacs, or from the
+command line:
+ispell -t document_chapter1.tex
+
+
+--- CHUNK 12 ---
+:
+ispell -t document_chapter1.tex
+
+
+--- CHUNK 13 ---
+1.3. LATEX AND PDFLATEX CAPABILITIES
+7
+1.3
+LATEX and pdfLATEX capabilities
+1.3.1
+Overview
+First you edit your source .tex ﬁle. In LATEX you compile it using the latex
+command to a .dvi ﬁle (which stands for device-independent). The .dvi ﬁle
+can be converted to any device-dependent format you like using an appropriate
+driver, for example dvips.
+When producing .pdf ﬁles you should use pdflatex, which produces di-
+rectly .pdf ﬁles out of .tex sources. Note that in the .tex ﬁle you may need
+to use
+
+
+--- CHUNK 14 ---
+s. Note that in the .tex ﬁle you may need
+to use some PDF speciﬁc packages.
+For viewing .tex ﬁles use your favourite text editor, for viewing .dvi ﬁles
+under X Window System use xdvi command, .ps ﬁles can be viewed with gv
+(or ghostview) and .pdf ﬁles with acroread, gv or xpdf.
+1.3.2
+LATEX
+A lot of examples can be found in this document.
+You should also print
+• doc/latex/general/latex2e.dvi and
+• doc/latex/general/lshort2e.dvi
+from your tetex distribution (usually in
+• /usr/share/texmf or
+•
+
+
+--- CHUNK 15 ---
+tribution (usually in
+• /usr/share/texmf or
+• /usr/lib/texmf/texmf).
+1.3.3
+pdfLATEX
+Consult doc/pdftex/manual.pdf from your tetex distribution for more
+details. Very useful informations can be found in the hyperref and graphics
+package manuals:
+• doc/latex/hyperref/manual.pdf and
+• doc/latex/graphics/grfguide.dvi.
+1.3.4
+Examples
+References
+MIMUW
+
+
+--- CHUNK 16 ---
+8
+CHAPTER 1. TEMPLATE
+Hyperlinks
+This is a target.
+And this is a link.
+Dashes, etc.
+There are three kinds of horizontal dash:
+• - (use inside words; for example “home-page”, “X-rated”)
+• – (use this one between numbers; for example “pages 2–22”)
+• — (use this one as a sentence separator — like here)
+National characters
+• ó, é, í, ...
+• è, à, ì, .. .
+• ô, ê, .. .
+• õ, ñ, . ..
+• ö, ë, .. .
+• ˙z
+• ˛a, ˛e
+• ł, ø, ß
+There are other ways to do this, see the documentation for inputenc pack-
+age.
+
+
+--- CHUNK 17 ---
+e the documentation for inputenc pack-
+age.
+Reserved characters
+Some characters have some special meaning, thus cannot be entered in the usual
+way.
+• $ & % # _ { }
+• \
+• ˜ ˆ
+
+
+--- CHUNK 18 ---
+1.3. LATEX AND PDFLATEX CAPABILITIES
+9
+Math
+• 12, 12n, . ..
+• i1, i2n, . ..
+•
+1
+2,
+2n
+2−3, ...
+• α, β, γ, Ω, ...
+• →, ⇒, ≥,̸ =, ∈, ⋆, ...
+•
+√
+2, . ..
+• 2 + 2, ...
+For more examples and symbols see chapter 3 of lshort2e.dvi.
+Fonts
+• Roman
+• Emphasis
+• Medium weight — the default
+• Boldface
+• Upright
+• Slanted
+• Sans serif
+• SMALL CAPS
+• Typewriter
+• and sizes:
+–
+tiny
+– scriptsize
+– footnotesize
+– small
+– normalsize
+
+
+--- CHUNK 19 ---
+10
+CHAPTER 1. TEMPLATE
+– large
+– Large
+– LARGE
+– huge
+– Huge
+
+
+--- CHUNK 20 ---
+1 
+Sample PDF 
+ 
+Created for testing PDFObject 
+ 
+This PDF is three pages long. Three long pages. Or three short pages if 
+you’re optimistic. Is it the same as saying “three long minutes”, knowing 
+that all minutes are the same duration, and one cannot possibly be longer 
+than the other? If these pages are all the same size, can one possibly be 
+longer than the other? 
+ 
+I digress. Here’s some Latin. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec 
+odio. Praesent libero.
+
+
+--- CHUNK 21 ---
+iscing elit. Integer nec 
+odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum 
+imperdiet. Duis sagittis ipsum. Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris 
+massa. Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora torquent per 
+conubia nostra, per inceptos himenaeos. Curabitur sodales ligula in libero.  
+ 
+Sed dignissim lacinia nunc. Curabitur tortor. Pellentesque nibh. Aenean quam. In scelerisque sem 
+at
+
+
+--- CHUNK 22 ---
+esque nibh. Aenean quam. In scelerisque sem 
+at dolor. Maecenas mattis. Sed convallis tristique sem. Proin ut ligula vel nunc egestas porttitor. 
+Morbi lectus risus, iaculis vel, suscipit quis, luctus non, massa. Fusce ac turpis quis ligula lacinia 
+aliquet. Mauris ipsum. Nulla metus metus, ullamcorper vel, tincidunt sed, euismod in, nibh.  
+ 
+Quisque volutpat condimentum velit. Class aptent taciti sociosqu ad litora torquent per conubia 
+nostra, per inceptos himenaeos. Nam nec ante. Sed
+
+
+--- CHUNK 23 ---
+per inceptos himenaeos. Nam nec ante. Sed lacinia, urna non tincidunt mattis, tortor neque 
+adipiscing diam, a cursus ipsum ante quis turpis. Nulla facilisi. Ut fringilla. Suspendisse potenti. 
+Nunc feugiat mi a tellus consequat imperdiet. Vestibulum sapien. Proin quam. Etiam ultrices.  
+ 
+Suspendisse in justo eu magna luctus suscipit. Sed lectus. Integer euismod lacus luctus magna. 
+Quisque cursus, metus vitae pharetra auctor, sem massa mattis sem, at interdum magna augue 
+eget diam.
+
+
+--- CHUNK 24 ---
+sem, at interdum magna augue 
+eget diam. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; 
+Morbi lacinia molestie dui. Praesent blandit dolor. Sed non quam. In vel mi sit amet augue congue 
+elementum. Morbi in ipsum sit amet pede facilisis laoreet. Donec lacus nunc, viverra nec, blandit 
+vel, egestas et, augue. Vestibulum tincidunt malesuada tellus. Ut ultrices ultrices enim. Curabitur 
+sit amet mauris.  
+ 
+Morbi in dui quis est pulvinar ullamcorper. Nulla
+
+
+--- CHUNK 25 ---
+Morbi in dui quis est pulvinar ullamcorper. Nulla facilisi. Integer lacinia sollicitudin massa. Cras 
+metus. Sed aliquet risus a tortor. Integer id quam. Morbi mi. Quisque nisl felis, venenatis tristique, 
+dignissim in, ultrices sit amet, augue. Proin sodales libero eget ante. Nulla quam. Aenean laoreet. 
+Vestibulum nisi lectus, commodo ac, facilisis ac, ultricies eu, pede. Ut orci risus, accumsan 
+porttitor, cursus quis, aliquet eget, justo. Sed pretium blandit orci.  
+ 
+Ut eu diam at pede
+
+
+--- CHUNK 26 ---
+pretium blandit orci.  
+ 
+Ut eu diam at pede suscipit sodales. Aenean lectus elit, fermentum non, convallis id, sagittis at, 
+neque. Nullam mauris orci, aliquet et, iaculis et, viverra vitae, ligula. Nulla ut felis in purus 
+aliquam imperdiet. Maecenas aliquet mollis lectus. Vivamus consectetuer risus et tortor. Lorem
+
+
+--- CHUNK 27 ---
+2 
+ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante 
+dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. 
+Praesent mauris.  
+ 
+Fusce nec tellus sed augue semper porta. Mauris massa. Vestibulum lacinia arcu eget nulla. Class 
+aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Curabitur 
+sodales ligula in libero. Sed dignissim lacinia nunc. Curabitur tortor. Pellentesque
+
+
+--- CHUNK 28 ---
+sim lacinia nunc. Curabitur tortor. Pellentesque nibh. Aenean 
+quam. In scelerisque sem at dolor. Maecenas mattis. Sed convallis tristique sem.  
+ 
+Proin ut ligula vel nunc egestas porttitor. Morbi lectus risus, iaculis vel, suscipit quis, luctus non, 
+massa. Fusce ac turpis quis ligula lacinia aliquet. Mauris ipsum. Nulla metus metus, ullamcorper 
+vel, tincidunt sed, euismod in, nibh. Quisque volutpat condimentum velit. Class aptent taciti 
+sociosqu ad litora torquent per conubia nostra, per
+
+
+--- CHUNK 29 ---
+osqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nam nec ante. Sed lacinia, 
+urna non tincidunt mattis, tortor neque adipiscing diam, a cursus ipsum ante quis turpis. Nulla 
+facilisi. Ut fringilla. Suspendisse potenti.  
+ 
+Nunc feugiat mi a tellus consequat imperdiet. Vestibulum sapien. Proin quam. Etiam ultrices. 
+Suspendisse in justo eu magna luctus suscipit. Sed lectus. Integer euismod lacus luctus magna. 
+Quisque cursus, metus vitae pharetra auctor, sem massa mattis sem,
+
+
+--- CHUNK 30 ---
+tus vitae pharetra auctor, sem massa mattis sem, at interdum magna augue 
+eget diam. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; 
+Morbi lacinia molestie dui. Praesent blandit dolor. Sed non quam. In vel mi sit amet augue congue 
+elementum. Morbi in ipsum sit amet pede facilisis laoreet.  
+ 
+Donec lacus nunc, viverra nec, blandit vel, egestas et, augue. Vestibulum tincidunt malesuada 
+tellus. Ut ultrices ultrices enim. Curabitur sit amet mauris. Morbi
+
+
+--- CHUNK 31 ---
+ultrices enim. Curabitur sit amet mauris. Morbi in dui quis est pulvinar 
+ullamcorper. Nulla facilisi. Integer lacinia sollicitudin massa. Cras metus. Sed aliquet risus a 
+tortor. Integer id quam. Morbi mi.  
+ 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed 
+cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis 
+ipsum. Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa. Vestibulum
+
+
+--- CHUNK 32 ---
+ugue semper porta. Mauris massa. Vestibulum 
+lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per 
+inceptos himenaeos. Curabitur sodales ligula in libero.  
+ 
+Sed dignissim lacinia nunc. Curabitur tortor. Pellentesque nibh. Aenean quam. In scelerisque sem 
+at dolor. Maecenas mattis. Sed convallis tristique sem. Proin ut ligula vel nunc egestas porttitor. 
+Morbi lectus risus, iaculis vel, suscipit quis, luctus non, massa. Fusce ac turpis quis ligula
+
+
+--- CHUNK 33 ---
+luctus non, massa. Fusce ac turpis quis ligula lacinia 
+aliquet. Mauris ipsum. Nulla metus metus, ullamcorper vel, tincidunt sed, euismod in, nibh.  
+ 
+Quisque volutpat condimentum velit. Class aptent taciti sociosqu ad litora torquent per conubia 
+nostra, per inceptos himenaeos. Nam nec ante. Sed lacinia, urna non tincidunt mattis, tortor neque 
+adipiscing diam, a cursus ipsum ante quis turpis. Nulla facilisi. Ut fringilla. Suspendisse potenti. 
+Nunc feugiat mi a tellus consequat imperdiet.
+
+
+--- CHUNK 34 ---
+Nunc feugiat mi a tellus consequat imperdiet. Vestibulum sapien. Proin quam. Etiam ultrices.  
+ 
+Suspendisse in justo eu magna luctus suscipit. Sed lectus. Integer euismod lacus luctus magna. 
+Quisque cursus, metus vitae pharetra auctor, sem massa mattis sem, at interdum magna augue 
+eget diam. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; 
+Morbi lacinia molestie dui. Praesent blandit dolor. Sed non quam. In vel mi sit amet augue congue
+
+
+--- CHUNK 35 ---
+. In vel mi sit amet augue congue
+
+
+--- CHUNK 36 ---
+3 
+elementum. Morbi in ipsum sit amet pede facilisis laoreet. Donec lacus nunc, viverra nec, blandit 
+vel, egestas et, augue. Vestibulum tincidunt malesuada tellus. Ut ultrices ultrices enim. Curabitur 
+sit amet mauris.  
+ 
+Morbi in dui quis est pulvinar ullamcorper. Nulla facilisi. Integer lacinia sollicitudin massa. Cras 
+metus. Sed aliquet risus a tortor. Integer id quam. Morbi mi. Quisque nisl felis, venenatis tristique, 
+dignissim in, ultrices sit amet, augue. Proin sodales libero eget
+
+
+--- CHUNK 37 ---
+ices sit amet, augue. Proin sodales libero eget ante. Nulla quam. Aenean laoreet. 
+Vestibulum nisi lectus, commodo ac, facilisis ac, ultricies eu, pede. Ut orci risus, accumsan 
+porttitor, cursus quis, aliquet eget, justo. Sed pretium blandit orci.  
+ 
+Ut eu diam at pede suscipit sodales. Aenean lectus elit, fermentum non, convallis id, sagittis at, 
+neque. Nullam mauris orci, aliquet et, iaculis et, viverra vitae, ligula. Nulla ut felis in purus 
+aliquam imperdiet. Maecenas aliquet mollis
+
+
+--- CHUNK 38 ---
+aliquam imperdiet. Maecenas aliquet mollis lectus. Vivamus consectetuer risus et tortor. Lorem 
+ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante 
+dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. 
+Praesent mauris.  
+ 
+Fusce nec tellus sed augue semper porta. Mauris massa. Vestibulum lacinia arcu eget nulla. Class 
+aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos.
+
+
+--- CHUNK 39 ---
+t per conubia nostra, per inceptos himenaeos. Curabitur 
+sodales ligula in libero. Sed dignissim lacinia nunc. Curabitur tortor. Pellentesque nibh. Aenean 
+quam. In scelerisque sem at dolor. Maecenas mattis. Sed convallis tristique sem.  
+ 
+Proin ut ligula vel nunc egestas porttitor. Morbi lectus risus, iaculis vel, suscipit quis, luctus non, 
+massa. Fusce ac turpis quis ligula lacinia aliquet. Mauris ipsum. Nulla metus metus, ullamcorper 
+vel, tincidunt sed, euismod in, nibh. Quisque volutpat
+
+
+--- CHUNK 40 ---
+incidunt sed, euismod in, nibh. Quisque volutpat condimentum velit. Class aptent taciti 
+sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nam nec ante. Sed lacinia, 
+urna non tincidunt mattis, tortor neque adipiscing diam, a cursus ipsum ante quis turpis. Nulla 
+facilisi. Ut fringilla. Suspendisse potenti.  
+ 
+Nunc feugiat mi a tellus consequat imperdiet. Vestibulum sapien. Proin quam. Etiam ultrices. 
+Suspendisse in justo eu magna luctus suscipit. Sed lectus. Integer
+
+
+--- CHUNK 41 ---
+eu magna luctus suscipit. Sed lectus. Integer euismod lacus luctus magna. 
+Quisque cursus, metus vitae pharetra auctor, sem massa mattis sem, at interdum magna augue 
+eget diam. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; 
+Morbi lacinia molestie dui. Praesent blandit dolor. Sed non quam. In vel mi sit amet augue congue 
+elementum. Morbi in ipsum sit amet pede facilisis laoreet.
+
+
+--- CHUNK 42 ---
+Coffee: From Bean to Brew
+A survey of the plant, its chemistry, its history, and its global economy
+1. The Coffee Plant and Its Origins
+Coffee comes from the seeds of flowering shrubs belonging to the genus Coffea, of which two
+species dominate commercial production: Coffea arabica and Coffea canephora, commonly known
+as arabica and robusta. Arabica accounts for roughly sixty percent of world production and is prized
+for its comparatively mild, aromatic flavor, while robusta contains nearly
+
+
+--- CHUNK 43 ---
+romatic flavor, while robusta contains nearly twice the caffeine and grows
+more easily at lower altitudes, making it cheaper to cultivate and popular in instant coffee and
+espresso blends.
+The plant is native to the highlands of Ethiopia, where local legend credits a goatherd named Kaldi
+with discovering coffee's stimulating effects after noticing his goats became unusually energetic when
+they ate berries from a certain shrub. From Ethiopia, cultivation spread across the Red Sea to Yemen
+by the
+
+
+--- CHUNK 44 ---
+ivation spread across the Red Sea to Yemen
+by the fifteenth century, where Sufi monks used the brewed drink to stay alert during long nights of
+prayer.
+1.1 Growing Conditions
+Coffee thrives in what growers call the 'bean belt,' a band of tropical and subtropical territory that
+circles the globe between the Tropic of Cancer and the Tropic of Capricorn. Ideal arabica cultivation
+typically occurs at elevations between 900 and 2,000 meters, where cooler temperatures slow the
+ripening of the coffee
+
+
+--- CHUNK 45 ---
+ler temperatures slow the
+ripening of the coffee cherry and allow more complex sugars and acids to develop. Consistent rainfall,
+well-drained volcanic soil, and moderate shade from companion trees all contribute to bean quality,
+which is why regions such as the Ethiopian highlands, the Colombian Andes, and the mountains of
+Central America are so closely associated with premium coffee.
+2. The Chemistry of Flavor and Caffeine
+A raw, unroasted coffee seed is dense, grassy-smelling, and bears little
+
+
+--- CHUNK 46 ---
+e seed is dense, grassy-smelling, and bears little resemblance to the aromatic
+bean that eventually reaches a grinder. Roasting triggers a cascade of chemical transformations,
+most notably the Maillard reaction, in which amino acids and reducing sugars combine under heat to
+produce hundreds of new aromatic compounds. A second process, caramelization, further breaks
+down sugars and contributes to the bean's characteristic brown color and bittersweet notes.
+Caffeine itself is a naturally occurring
+
+
+--- CHUNK 47 ---
+et notes.
+Caffeine itself is a naturally occurring alkaloid that acts primarily as an adenosine receptor antagonist
+in the human nervous system. Adenosine ordinarily accumulates in the brain over the course of a day
+and promotes drowsiness by binding to specific receptors; caffeine molecules are similar enough in
+shape to occupy those same receptors without activating them, which blocks the drowsiness signal
+and produces the familiar sense of alertness. A typical 240-milliliter cup of brewed
+
+
+--- CHUNK 48 ---
+rtness. A typical 240-milliliter cup of brewed coffee contains
+between 80 and 100 milligrams of caffeine, though the exact amount varies considerably with bean
+species, roast level, and brewing method.
+
+
+--- CHUNK 49 ---
+2.1 Why Roast Level Changes Taste
+Light roasts are removed from the heat before the beans reach the 'second crack,' an audible popping
+sound caused by internal gas pressure, and tend to preserve brighter acidity and origin-specific fruit
+or floral notes. Dark roasts, carried well past that point, lose much of their original character to the
+roasting process itself and instead develop heavier, smokier, and more bitter flavors along with a
+noticeable oily sheen on the bean's surface. Contrary to
+
+
+--- CHUNK 50 ---
+le oily sheen on the bean's surface. Contrary to popular belief, darker roasts generally
+contain slightly less caffeine by volume than lighter roasts, since prolonged roasting breaks down
+some caffeine and the beans also lose mass and expand.
+
+

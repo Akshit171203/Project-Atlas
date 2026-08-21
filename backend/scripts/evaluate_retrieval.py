@@ -4,53 +4,7 @@ from app.db.session import SessionLocal
 from app.services.retrieval import Retriever
 from app.services.reranked_retrieval import RerankedRetriever
 
-from typing import TypedDict
-
-class TestCase(TypedDict):
-    query: str
-    relevant_chunks: list[int]
-
-TEST_CASES: list[TestCase] = [
-    {
-        "query": "How does roast level affect the taste of coffee?",
-        "relevant_chunks": [49],
-    },
-
-    {
-        "query": "Why do darker and lighter roasted beans taste different?",
-        "relevant_chunks": [49],
-    },
-
-    {
-        "query": "How much caffeine is in a 240-milliliter cup of coffee?",
-        "relevant_chunks": [48],
-    },
-
-    {
-        "query": "What chemical reactions occur during coffee roasting?",
-        "relevant_chunks": [46],
-    },
-
-    {
-        "query": "What happens to coffee beans during roasting?",
-        "relevant_chunks": [46],
-    },
-
-    {
-        "query": "Where did coffee originate?",
-        "relevant_chunks": [42],
-    },
-
-    {
-        "query": "Which coffee species dominate commercial production?",
-        "relevant_chunks": [42],
-    },
-
-    {
-        "query": "Why is Arabica more expensive to cultivate?",
-        "relevant_chunks": [43],
-    },
-]
+from app.evals.retrieval_dataset import TEST_CASES
 def recall_at_k(
     retrieved_chunk_ids: list[int],
     relevant_chunk_ids: list[int],
@@ -102,14 +56,15 @@ async def main():
 
         for case in TEST_CASES:
 
+            case_id = case["id"]
             query = case["query"]
             relevant_chunks = case["relevant_chunks"]
 
-            print("\n")
-            print("=" * 100)
-            print(f"QUERY: {query}")
-            print(f"GROUND TRUTH: {relevant_chunks}")
-            print("=" * 100)
+            print(f"CASE: {case_id}\n")
+
+            if not relevant_chunks:
+                print("SKIPPED FROM RETRIEVAL METRICS — NO GROUND TRUTH\n")
+                continue
 
             # -------------------------
             # Vector retrieval
@@ -126,8 +81,10 @@ async def main():
                 for chunk in vector_results
             ]
 
-            print("\nVector Search:")
-            print(vector_ids)
+            print("Vector:")
+            for rank, chunk_id in enumerate(vector_ids[:5], start=1):
+                icon = "✅" if chunk_id in relevant_chunks else "❌"
+                print(f"Rank {rank} -> chunk {chunk_id} {icon}")
 
             for k in [1, 3, 5]:
 
@@ -164,8 +121,12 @@ async def main():
                 for chunk in reranked_results
             ]
 
-            print("\nReranked Search:")
-            print(reranked_ids)
+            print("\nReranked:")
+            for rank, chunk_id in enumerate(reranked_ids[:5], start=1):
+                icon = "✅" if chunk_id in relevant_chunks else "❌"
+                print(f"Rank {rank} -> chunk {chunk_id} {icon}")
+            
+            print("\n----------------------------------------\n")
 
             for k in [1, 3, 5]:
 
@@ -188,56 +149,54 @@ async def main():
         # Final metrics
         # -------------------------
 
-        print("\n")
-        print("=" * 100)
-        print("FINAL RESULTS")
-        print("=" * 100)
+        print("========================================")
+        print("RETRIEVAL EVALUATION")
+        print("========================================\n")
+        print(f"Cases: {len(TEST_CASES)}\n")
 
         for k in [1, 3, 5]:
-
+            
             vector_recall = (
                 sum(vector_recalls[k])
                 / len(vector_recalls[k])
             )
-
+            
             reranked_recall = (
                 sum(reranked_recalls[k])
                 / len(reranked_recalls[k])
             )
-
+            
+            print(f"\nRecall@{k}")
+            
             print(
-                f"\nRecall@{k}"
-            )
-
-            print(
-                f"Vector only:     "
+                f"Vector only:         "
                 f"{vector_recall:.3f}"
             )
-
+            
             print(
-                f"With reranking:  "
+                f"Vector + reranker: "
                 f"{reranked_recall:.3f}"
             )
-
+            
         vector_mrr = (
             sum(vector_rr)
             / len(vector_rr)
         )
-
+        
         reranked_mrr = (
             sum(reranked_rr)
             / len(reranked_rr)
         )
-
+        
         print("\nMRR")
-
+        
         print(
-            f"Vector only:     "
+            f"Vector only:         "
             f"{vector_mrr:.3f}"
         )
-
+        
         print(
-            f"With reranking:  "
+            f"Vector + reranker: "
             f"{reranked_mrr:.3f}"
         )
 
