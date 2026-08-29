@@ -9,15 +9,18 @@ from app.services.answer_repairer import AnswerRepairer
 from app.services.answer_verifier import AnswerVerifier
 from app.services.context_builder import ContextBuilder
 from app.services.context_formatter import ContextFormatter
+from app.services.evidence_gate import EvidenceGate
 from app.services.llm import gemini_provider
 from app.services.reranked_retrieval import RerankedRetriever
 from app.services.source_registry import SourceRegistry
+from app.schemas.citation import CitationVerificationResult
 
 
 class RAGService:
 
     def __init__(self):
         self.retriever = RerankedRetriever()
+        self.evidence_gate = EvidenceGate()
         self.answer_repairer = AnswerRepairer()
         self.context_builder = ContextBuilder()
         self.context_formatter = ContextFormatter()
@@ -36,6 +39,13 @@ class RAGService:
             candidate_k=10,
             top_k=5,
         )
+
+        if not self.evidence_gate.is_answerable(chunks):
+            return RAGResult(
+                answer="I don't have enough information in the knowledge base to answer this question.",
+                verification=CitationVerificationResult(verifications=[]),
+                repaired=False,
+            )
 
         context = self.context_builder.build(
             query=query,
