@@ -12,6 +12,8 @@ class Settings(BaseSettings):
         env_file=".env",
         extra="ignore",
     )
+    GEMINI_API_KEY: str
+    GEMINI_MODEL: str = "gemini-3.6-flash"  
 
 
 settings = Settings()
