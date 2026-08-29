@@ -20,12 +20,12 @@ class AnswerVerifier:
 
         verifications = []
 
-        for claim, source_ids in claims:
+        for claim in claims:
 
-            for source_id in source_ids:
+            for source_id in claim.source_ids:
 
                 verification = self.citation_verifier.verify(
-                    claim=claim,
+                    claim=claim.text,
                     source_id=source_id,
                     registry=registry,
                 )

@@ -1,6 +1,7 @@
 from app.schemas.citation import CitationVerification
 from app.services.nli import nli_provider
 from app.services.source_registry import SourceRegistry
+from app.services.source_sentence_splitter import split_sentences
 
 
 class CitationVerifier:
@@ -31,24 +32,49 @@ class CitationVerifier:
                 reason="Source does not exist.",
             )
 
-        result = self.nli.predict(
-            premise=source.text,
-            hypothesis=claim,
+        sentences = split_sentences(
+            source.text
         )
 
-        scores = result["scores"]
-        entailment_score = scores["entailment"]
+        if not sentences:
+            return CitationVerification(
+                claim=claim,
+                source_id=source_id,
+                label="no_source_text",
+                score=0.0,
+                supported=False,
+                reason="Source contains no usable sentences.",
+            )
+
+        best_label = "neutral"
+        best_score = 0.0
+
+        for sentence in sentences:
+
+            result = self.nli.predict(
+                premise=sentence,
+                hypothesis=claim,
+            )
+
+            entailment_score = result["scores"][
+                "entailment"
+            ]
+
+            if entailment_score > best_score:
+
+                best_score = entailment_score
+                best_label = result["label"]
 
         supported = (
-            result["label"] == "entailment"
-            and entailment_score >= self.entailment_threshold
+            best_label == "entailment"
+            and best_score >= self.entailment_threshold
         )
 
         return CitationVerification(
             claim=claim,
             source_id=source_id,
-            label=result["label"],
-            score=entailment_score,
+            label=best_label,
+            score=best_score,
             supported=supported,
             reason=(
                 "Claim is supported by the source."

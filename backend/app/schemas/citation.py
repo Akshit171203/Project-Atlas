@@ -17,3 +17,11 @@ class CitationVerificationResult(BaseModel):
             verification.supported
             for verification in self.verifications
         )
+
+    @property
+    def failed(self) -> list[CitationVerification]:
+        return [
+            verification
+            for verification in self.verifications
+            if not verification.supported
+        ]

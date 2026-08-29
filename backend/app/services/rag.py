@@ -4,6 +4,8 @@ from app.prompts.rag import (
     SYSTEM_PROMPT,
     build_rag_prompt,
 )
+from app.schemas.rag import RAGResult
+from app.services.answer_repairer import AnswerRepairer
 from app.services.answer_verifier import AnswerVerifier
 from app.services.context_builder import ContextBuilder
 from app.services.context_formatter import ContextFormatter
@@ -16,6 +18,7 @@ class RAGService:
 
     def __init__(self):
         self.retriever = RerankedRetriever()
+        self.answer_repairer = AnswerRepairer()
         self.context_builder = ContextBuilder()
         self.context_formatter = ContextFormatter()
         self.llm = gemini_provider
@@ -60,7 +63,30 @@ class RAGService:
             registry=registry,
         )
 
-        return {
-            "answer": answer,
-            "verification": verification,
-        }
+        repaired = False
+
+        if not verification.all_supported:
+
+            failed_claims = [
+                item.claim
+                for item in verification.failed
+            ]
+
+            answer = await self.answer_repairer.repair(
+                answer=answer,
+                context=formatted_context,
+                failed_claims=failed_claims,
+            )
+
+            repaired = True
+
+            verification = self.answer_verifier.verify(
+                answer=answer,
+                registry=registry,
+            )
+
+        return RAGResult(
+            answer=answer,
+            verification=verification,
+            repaired=repaired,
+        )

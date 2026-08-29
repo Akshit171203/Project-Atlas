@@ -21,14 +21,25 @@ async def main():
     print("ANSWER")
     print("=" * 100)
 
-    print(result["answer"])
+    print(result.answer)
+
+    print()
+    print("=" * 100)
+    print("REPAIR STATUS")
+    print("=" * 100)
+
+    print("Repaired:", result.repaired)
+    print(
+        "All supported:",
+        result.verification.all_supported,
+    )
 
     print()
     print("=" * 100)
     print("CITATION VERIFICATION")
     print("=" * 100)
 
-    for verification in result["verification"].verifications:
+    for verification in result.verification.verifications:
 
         print()
         print("CLAIM:", verification.claim)
