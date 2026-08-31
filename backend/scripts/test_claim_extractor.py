@@ -1,7 +1,8 @@
+import asyncio
 from app.services.claim_extractor import extract_claims
 
 
-def main():
+async def main():
 
     answer = """
 Roast level affects coffee flavor.
@@ -16,7 +17,7 @@ Roast level affects coffee flavor.
   and caramelization [S4].
 """
 
-    claims = extract_claims(answer)
+    claims = await extract_claims(answer)
 
     print("=" * 80)
     print("EXTRACTED CLAIMS")
@@ -30,4 +31,4 @@ Roast level affects coffee flavor.
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

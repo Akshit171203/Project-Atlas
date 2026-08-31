@@ -10,13 +10,13 @@ class AnswerVerifier:
     def __init__(self):
         self.citation_verifier = CitationVerifier()
 
-    def verify(
+    async def verify(
         self,
         answer: str,
         registry: SourceRegistry,
     ) -> CitationVerificationResult:
 
-        claims = extract_claims(answer)
+        claims = await extract_claims(answer)
 
         verifications = []
 

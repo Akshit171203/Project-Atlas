@@ -68,11 +68,14 @@ class RAGService:
 
         registry = SourceRegistry(chunks)
 
-        verification = self.answer_verifier.verify(
+        initial_answer = answer
+
+        initial_verification = await self.answer_verifier.verify(
             answer=answer,
             registry=registry,
         )
 
+        verification = initial_verification
         repaired = False
 
         if not verification.all_supported:
@@ -90,7 +93,7 @@ class RAGService:
 
             repaired = True
 
-            verification = self.answer_verifier.verify(
+            verification = await self.answer_verifier.verify(
                 answer=answer,
                 registry=registry,
             )
@@ -99,4 +102,6 @@ class RAGService:
             answer=answer,
             verification=verification,
             repaired=repaired,
+            initial_answer=initial_answer,
+            initial_verification=initial_verification,
         )

@@ -36,7 +36,7 @@ Roasting triggers the Maillard reaction [S1].
 
     verifier = AnswerVerifier()
 
-    before = verifier.verify(
+    before = await verifier.verify(
         answer=bad_answer,
         registry=registry,
     )
@@ -84,7 +84,7 @@ Roasting triggers the Maillard reaction [S1].
     print("=" * 100)
     print(repaired_answer)
 
-    after = verifier.verify(
+    after = await verifier.verify(
         answer=repaired_answer,
         registry=registry,
     )
