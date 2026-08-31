@@ -14,6 +14,9 @@ from app.services.llm import gemini_provider
 from app.services.reranked_retrieval import RerankedRetriever
 from app.services.source_registry import SourceRegistry
 from app.schemas.citation import CitationVerificationResult
+from app.services.answer_relevance import (
+    answer_relevance_evaluator,
+)
 
 
 class RAGService:
@@ -42,9 +45,19 @@ class RAGService:
 
         if not self.evidence_gate.is_answerable(chunks):
             return RAGResult(
-                answer="I don't have enough information in the knowledge base to answer this question.",
-                verification=CitationVerificationResult(verifications=[]),
+                answer=(
+                    "I don't have enough information in the "
+                    "knowledge base to answer this question."
+                ),
+                verification=CitationVerificationResult(
+                    verifications=[]
+                ),
                 repaired=False,
+                answerable=False,
+                retrieval_chunk_ids=[
+                    chunk.chunk_id
+                    for chunk in chunks
+                ],
             )
 
         context = self.context_builder.build(
@@ -98,10 +111,21 @@ class RAGService:
                 registry=registry,
             )
 
+        relevance = await answer_relevance_evaluator.evaluate(
+            query=query,
+            answer=answer,
+        )
+
         return RAGResult(
             answer=answer,
             verification=verification,
             repaired=repaired,
             initial_answer=initial_answer,
             initial_verification=initial_verification,
+            answerable=True,
+            retrieval_chunk_ids=[
+                chunk.chunk_id
+                for chunk in chunks
+            ],
+            relevance=relevance,
         )
