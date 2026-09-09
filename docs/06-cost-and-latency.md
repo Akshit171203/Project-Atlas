@@ -1,0 +1,206 @@
+# 6. Cost and latency — what verification actually costs
+
+> Measured before/after record:
+> [`COST_OPTIMIZATION.md`](../backend/COST_OPTIMIZATION.md). This document
+> explains the shape of the problem and why the obvious fixes are or
+> aren't available.
+
+## The number that frames everything
+
+**~73-80 seconds per query** on local Ollama with `llama3.1`.
+
+For comparison: a production RAG system doing a single generation call
+with no verification answers in roughly **6 seconds**.
+
+That's an order of magnitude, and it is not an implementation
+inefficiency. It is the price of the verification pipeline, paid in full,
+on every question.
+
+## Where the time goes
+
+Local models — embeddings, the reranker, NLI — are **free and fast**.
+They're small, they run on CPU, and they don't leave the machine. Vector
+search is a Postgres index lookup. None of that is the bottleneck.
+
+The cost is entirely in **LLM round-trips**, of which there are up to
+five, and they are **strictly sequential**:
+
+| # | Call | Always? | Needs |
+|---|---|---|---|
+| 1 | Generate answer | yes | retrieved chunks |
+| 2 | Extract claims | yes | the answer from 1 |
+| 3 | Repair | only if claims failed | failures from 2 |
+| 4 | Re-extract claims | only if repaired | the repaired answer from 3 |
+| 5 | Relevance check | yes | the final answer |
+
+Plus a sixth on the fallback path — query rewriting, when the evidence
+gate rejects the first retrieval ([doc 2](02-retrieval-failures.md)).
+
+**Each call needs the previous call's output as its input.** That's not an
+architectural accident that could be refactored away; it's the logical
+structure of the task. You cannot extract claims from an answer that
+hasn't been written, or repair claims that haven't been checked. At
+~15-20s per local call, five in a row is ~75-100s.
+
+Note also that calls 1 and 3 both include the **full retrieved context**.
+On any query that needs repair, you pay for the same source text twice.
+
+## What was tried, measured, and what stuck
+
+Full numbers in [`COST_OPTIMIZATION.md`](../backend/COST_OPTIMIZATION.md).
+The short version:
+
+**Baseline** (`"How do arabica and robusta differ?"`, ollama/llama3.1):
+`5 calls, 49.12s, 3,245 tokens`
+
+**Change 1 — `top_k=5 → 3`.** Fewer chunks means a smaller prompt on the
+two calls that carry context (generate and repair).
+
+**Change 2 — `LLM_MAX_OUTPUT_TOKENS=500`.** Neither provider had *any*
+output cap before. Nothing stopped a model from rambling — and one did
+exactly that, appending an unprompted *"Note: I removed the claims
+about..."* to a repaired answer ([doc 4](04-hallucination-and-verification.md)).
+A cap bounds worst-case cost regardless of how well-behaved the output is,
+which is a different kind of protection from fixing the prompt: prompt
+fixes address known failures, a cap addresses unknown ones.
+
+**Result:** `5 calls, 28.46s, 2,682 tokens` — **-17.3% tokens, -42.1%
+duration.**
+
+**Latency fell more than twice as fast as token count.** Worth
+understanding: a shorter prompt means less to *process* (prefill,
+quadratic-ish in sequence length for attention) *and* less to generate,
+and the two compound. Token count alone systematically understates the
+latency win from trimming prompts.
+
+Quality, on the 7-case suite at the time, went **5/7 → 6/7** with the
+repair rate roughly halving (4/7 → 2/7). The plausible mechanism: a
+smaller, more tightly curated chunk set gives the model less irrelevant
+material to draw an unsupported claim from on the first pass, so fewer
+answers need repair at all. Plausible from one 7-case run, not proven.
+
+### And then `top_k=3` was reverted
+
+On a harder document, `top_k=3` cut off a genuinely relevant chunk that
+ranked 4th ([doc 2](02-retrieval-failures.md), problem 1). It's back to 5,
+and the cost numbers above no longer describe the live configuration.
+
+**This is the most useful thing in the cost story**, which is why
+`COST_OPTIMIZATION.md` was annotated rather than rewritten. The change
+improved the eval numbers *on the document it was measured against* and
+broke a real question on a document it wasn't. Optimizing against a single
+narrow eval set, without checking recall on harder material, would have
+shipped a regression with metrics that said it was an improvement.
+
+The output-token cap survived unchanged — it wasn't coupled to retrieval
+quality.
+
+## What was deliberately not cut
+
+**The relevance call.** It's a full LLM call, ~20% of the budget, and
+removing it is the single easiest saving available. It stays because it is
+the only gate that caught the prompt injection
+([doc 5](05-relevance-and-prompt-injection.md)). Trading a documented
+security property for 20% latency on a system whose entire value
+proposition is trustworthiness is a bad trade, and naming *why* you didn't
+take an available optimization is part of the record.
+
+**Merging claim extraction into generation.** The highest-leverage
+remaining option, because it removes a whole call rather than shrinking
+one — ask the model to return `{answer, claims}` in one structured
+response. Not done, for a specific reason: it asks one call to
+simultaneously compose fluent prose *and* rigorously enumerate its own
+factual claims, and a model that has just written a sentence is not a
+neutral judge of what that sentence asserts. Separation of concerns
+applies to prompts too. It needs a real quality comparison — repair rate,
+verification accuracy — before it's worth the token saving. Flagged as a
+follow-up, not implemented speculatively.
+
+## Parallelization: why it doesn't help *here*
+
+The dependency chain forces calls 1→2→3→4 to be sequential. Call 5
+(relevance) only needs the final answer, so it can't move earlier either.
+
+Some restructuring is imaginable — running relevance against the *initial*
+answer concurrently with verification, accepting that a repair might
+change what's being judged. But on **local Ollama it wouldn't show up at
+all**: a single loaded model on one GPU processes one request at a time no
+matter how many you issue concurrently. Concurrency needs a server that
+can actually serve concurrently.
+
+On Gemini it would be genuine parallelism and a real wall-clock win. This
+is a case where **the right optimization depends on the deployment target**,
+and measuring it locally would have shown nothing and led to the wrong
+conclusion.
+
+## The provider swap, and why it's one line
+
+[`llm.py`](../backend/app/services/llm.py) defines an `LLMProvider`
+`Protocol` — a single `generate(system_prompt, user_prompt) -> str` method
+— with two implementations. `LLM_PROVIDER` in `.env` picks one at import
+time.
+
+```python
+default_llm: LLMProvider = _build_default_llm()
+```
+
+Every service imports `default_llm` and calls `.generate()`. Nothing
+downstream knows which provider is live. Switching from a free local model
+to a paid cloud one is an environment variable.
+
+Two things this buys beyond tidiness:
+
+- **Develop locally for free, deploy on a cloud model.** The five-call
+  pipeline would be expensive to iterate on against a metered API.
+  `llama3.1` costs nothing per run, which is what makes an 11-case
+  end-to-end eval suite something you actually run before and after every
+  change rather than something you avoid.
+- **The abstraction was tested by real use, not designed in advance.** Both
+  providers work, both report token usage into the same metrics context,
+  and the interface survived contact with two genuinely different SDKs.
+
+Ollama is reached through the **OpenAI-compatible** endpoint
+(`localhost:11434/v1`) using the `openai` client rather than Ollama's
+native API — it makes the two providers structurally similar and means
+swapping in any OpenAI-compatible service later is a base URL change.
+
+### Provider-specific scars worth keeping
+
+```python
+# max_keepalive_connections=0 avoids httpx.ReadError from reused
+# keep-alive connections getting silently killed between requests
+```
+
+A real bug: HTTP keep-alive connections to the Gemini endpoint were being
+dropped between requests, and the next request on the reused connection
+failed with an opaque `httpx.ReadError` — a network-layer failure that
+looks nothing like its cause. Disabling connection reuse trades a little
+handshake overhead for reliability. The comment is there because nobody
+would ever guess it from the symptom.
+
+Also note the **Gemini free tier caps at 20 requests/day** on
+`gemini-3.6-flash`. At 5 calls per query, that is **four questions per
+day** — which makes the local-first setup a practical necessity for
+development, not just a preference.
+
+## What the metrics plumbing measures
+
+[`llm_metrics.py`](../backend/app/services/llm_metrics.py) uses a
+`ContextVar` to collect per-call duration and token counts without
+threading a metrics object through every function signature. `RAGService.answer()`
+opens the context; each provider's `timed_call()` records into whatever
+context is active; the totals land in `RAGResult.metrics` and are rendered
+in the frontend.
+
+`ContextVar` rather than a global because it's **async-task-local** —
+concurrent requests each get their own metrics without interfering, which
+a module-level global would not survive.
+
+`total_tokens` is `None` if *any* call failed to report usage, rather than
+silently summing a partial total. A number that's quietly wrong is worse
+than an admitted absence — the same fail-closed instinct as the empty
+verification list in [doc 4](04-hallucination-and-verification.md).
+
+---
+
+**Next:** [7. How this is evaluated](07-evaluation-methodology.md)
