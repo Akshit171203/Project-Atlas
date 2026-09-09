@@ -306,9 +306,14 @@ keyword-merge experiment turning a correct refusal into an answer. →
 
 ## Documentation
 
-**[📚 Engineering deep dives (docs/)](docs/README.md)** — eight documents
+**[📚 Engineering deep dives (docs/)](docs/README.md)** — nine documents
 explaining every problem hit and why each fix worked, written to be read
 after revising fundamentals rather than as a changelog.
+
+New to this area? **[docs/00-prerequisites.md](docs/00-prerequisites.md)**
+is a revision checklist for a full-stack developer moving into GenAI —
+what already transfers, the honest math minimum (four things), what's safe
+to skip, and the misconceptions this codebase measured and found false.
 
 Original investigation records, written as the work happened:
 

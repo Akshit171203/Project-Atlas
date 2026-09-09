@@ -7,8 +7,13 @@ fix worked**, not just what changed.
 Read in order if you're new to RAG. Jump straight to a numbered document
 if you're chasing something specific.
 
+**New to GenAI and coming from another kind of development?** Start with
+doc 0 — it's a revision checklist, including an explicit list of what you
+can safely skip.
+
 | # | Document | What it covers |
 |---|---|---|
+| 0 | [What to revise before starting](00-prerequisites.md) | Prerequisites for a full-stack dev moving into GenAI: what transfers, the honest math minimum, what to skip, and misconceptions this project will correct |
 | 1 | [How RAG works, and why this system is built this way](01-how-rag-works.md) | Embeddings, cosine similarity, chunking, bi-encoders vs cross-encoders, NLI, why there are three refusal gates. **Start here.** |
 | 2 | [Where retrieval breaks](02-retrieval-failures.md) | Keyword collision, vector search misses, the reranker's lexical brittleness, query rewriting, and the hybrid-search experiment that was reverted |
 | 3 | [The evidence gate](03-evidence-gate.md) | Deciding when *not* to answer; why cross-encoder scores aren't probabilities and thresholds must be measured |
