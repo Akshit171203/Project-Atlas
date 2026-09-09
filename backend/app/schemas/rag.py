@@ -4,6 +4,10 @@ from app.schemas.citation import CitationVerificationResult
 from app.schemas.evaluation import AnswerRelevanceResult
 
 
+class QueryRequest(BaseModel):
+    query: str
+
+
 class RAGResult(BaseModel):
     answer: str
     verification: CitationVerificationResult

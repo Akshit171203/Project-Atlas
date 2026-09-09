@@ -2,13 +2,13 @@ from app.prompts.citation_repair import (
     REPAIR_SYSTEM_PROMPT,
     build_repair_prompt,
 )
-from app.services.llm import gemini_provider
+from app.services.llm import default_llm
 
 
 class AnswerRepairer:
 
     def __init__(self):
-        self.llm = gemini_provider
+        self.llm = default_llm
 
     async def repair(
         self,

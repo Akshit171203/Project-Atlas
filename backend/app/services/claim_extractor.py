@@ -1,6 +1,6 @@
 import json
 from app.schemas.claims import Claim
-from app.services.llm import gemini_provider
+from app.services.llm import default_llm
 from app.prompts.claim_extraction import (
     CLAIM_EXTRACTION_SYSTEM_PROMPT,
     build_claim_extraction_prompt,
@@ -13,7 +13,7 @@ async def extract_claims(
 
     user_prompt = build_claim_extraction_prompt(answer)
 
-    response = await gemini_provider.generate(
+    response = await default_llm.generate(
         system_prompt=CLAIM_EXTRACTION_SYSTEM_PROMPT,
         user_prompt=user_prompt,
     )

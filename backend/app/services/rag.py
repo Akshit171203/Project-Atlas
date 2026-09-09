@@ -10,7 +10,7 @@ from app.services.answer_verifier import AnswerVerifier
 from app.services.context_builder import ContextBuilder
 from app.services.context_formatter import ContextFormatter
 from app.services.evidence_gate import EvidenceGate
-from app.services.llm import gemini_provider
+from app.services.llm import default_llm
 from app.services.reranked_retrieval import RerankedRetriever
 from app.services.source_registry import SourceRegistry
 from app.schemas.citation import CitationVerificationResult
@@ -27,7 +27,7 @@ class RAGService:
         self.answer_repairer = AnswerRepairer()
         self.context_builder = ContextBuilder()
         self.context_formatter = ContextFormatter()
-        self.llm = gemini_provider
+        self.llm = default_llm
         self.answer_verifier = AnswerVerifier()
 
     async def answer(

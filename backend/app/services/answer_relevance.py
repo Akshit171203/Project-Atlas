@@ -5,7 +5,7 @@ from app.prompts.answer_relevance import (
     build_answer_relevance_prompt,
 )
 from app.schemas.evaluation import AnswerRelevanceResult
-from app.services.llm import gemini_provider
+from app.services.llm import default_llm
 
 
 class AnswerRelevanceEvaluator:
@@ -21,12 +21,21 @@ class AnswerRelevanceEvaluator:
             answer=answer,
         )
 
-        response = await gemini_provider.generate(
+        response = await default_llm.generate(
             user_prompt=prompt,
             system_prompt=ANSWER_RELEVANCE_SYSTEM_PROMPT,
         )
 
-        data = json.loads(response)
+        cleaned = response.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+
+        data = json.loads(cleaned.strip())
 
         return AnswerRelevanceResult.model_validate(data)
 

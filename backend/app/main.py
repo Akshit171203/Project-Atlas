@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.documents import router as document_router
+from app.api.query import router as query_router
 
 app = FastAPI(
     title="Project Atlas",
@@ -8,6 +9,7 @@ app = FastAPI(
 )
 
 app.include_router(document_router)
+app.include_router(query_router)
 
 
 @app.get("/")
