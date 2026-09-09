@@ -34,8 +34,14 @@ async def extract_claims(
     except json.JSONDecodeError:
         return []
 
+    if not isinstance(data, list):
+        return []
+
     claims = []
     for item in data:
+        if not isinstance(item, dict):
+            continue
+
         claim_text = item.get("claim")
         sources = item.get("sources", [])
 

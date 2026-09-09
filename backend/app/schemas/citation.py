@@ -13,6 +13,13 @@ class CitationVerificationResult(BaseModel):
 
     @property
     def all_supported(self) -> bool:
+        # An empty list almost always means claim extraction failed
+        # to parse (see claim_extractor.py), not that the answer had
+        # zero factual claims — treat it as unverified rather than
+        # vacuously "all supported".
+        if not self.verifications:
+            return False
+
         return all(
             verification.supported
             for verification in self.verifications

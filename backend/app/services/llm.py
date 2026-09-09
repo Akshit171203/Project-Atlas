@@ -7,6 +7,7 @@ from google.genai import types
 from openai import AsyncOpenAI
 
 from app.core.config import settings
+from app.services.llm_metrics import timed_call
 
 
 class LLMProvider(Protocol):
@@ -40,21 +41,27 @@ class GeminiProvider:
         system_prompt: str,
         user_prompt: str,
     ) -> str:
-        response = await self.client.aio.models.generate_content(
-            model=self.model,
-            contents=user_prompt,
-            config={
-                "system_instruction": system_prompt,
-                "automatic_function_calling": {"disable": True},
-            },
-        )
-
-        if response.text is None:
-            raise RuntimeError(
-                "Gemini returned an empty response."
+        with timed_call() as call:
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=user_prompt,
+                config={
+                    "system_instruction": system_prompt,
+                    "automatic_function_calling": {"disable": True},
+                },
             )
 
-        return response.text
+            usage = response.usage_metadata
+            if usage is not None:
+                call["prompt_tokens"] = usage.prompt_token_count
+                call["completion_tokens"] = usage.candidates_token_count
+
+            if response.text is None:
+                raise RuntimeError(
+                    "Gemini returned an empty response."
+                )
+
+            return response.text
 
 
 class OllamaProvider:
@@ -71,23 +78,40 @@ class OllamaProvider:
         system_prompt: str,
         user_prompt: str,
     ) -> str:
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.0,
-        )
-        content = response.choices[0].message.content
-        if content is None:
-            raise RuntimeError(
-                "Ollama returned an empty response."
+        with timed_call() as call:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.0,
             )
-        return content
+
+            if response.usage is not None:
+                call["prompt_tokens"] = response.usage.prompt_tokens
+                call["completion_tokens"] = response.usage.completion_tokens
+
+            content = response.choices[0].message.content
+            if content is None:
+                raise RuntimeError(
+                    "Ollama returned an empty response."
+                )
+            return content
 
 
-# Export the default provider here!
-# Swap between GeminiProvider() and OllamaProvider() as needed
-default_llm: LLMProvider = GeminiProvider()
-# default_llm: LLMProvider = OllamaProvider(model_name="llama3.1")
+def _build_default_llm() -> LLMProvider:
+    if settings.LLM_PROVIDER == "ollama":
+        return OllamaProvider(model_name=settings.OLLAMA_MODEL)
+
+    if settings.LLM_PROVIDER == "gemini":
+        return GeminiProvider()
+
+    raise ValueError(
+        f"Unknown LLM_PROVIDER: {settings.LLM_PROVIDER!r} "
+        "(expected 'gemini' or 'ollama')"
+    )
+
+
+# Controlled by LLM_PROVIDER in .env — no code changes needed to switch.
+default_llm: LLMProvider = _build_default_llm()

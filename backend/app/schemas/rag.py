@@ -9,6 +9,12 @@ class QueryRequest(BaseModel):
     document_id: int
 
 
+class QueryMetrics(BaseModel):
+    llm_call_count: int
+    total_duration_seconds: float
+    total_tokens: int | None = None
+
+
 class RAGResult(BaseModel):
     answer: str
     verification: CitationVerificationResult
@@ -18,3 +24,5 @@ class RAGResult(BaseModel):
     answerable: bool
     retrieval_chunk_ids: list[int] = []
     relevance: AnswerRelevanceResult | None = None
+    metrics: QueryMetrics | None = None
+    rejected: bool = False

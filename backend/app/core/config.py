@@ -13,7 +13,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     GEMINI_API_KEY: str
-    GEMINI_MODEL: str = "gemini-3.6-flash"  
+    GEMINI_MODEL: str = "gemini-3.6-flash"
+
+    LLM_PROVIDER: str = "gemini"
+    OLLAMA_MODEL: str = "llama3.1"
 
 
 settings = Settings()
