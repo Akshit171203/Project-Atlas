@@ -6,6 +6,7 @@ from app.schemas.evaluation import AnswerRelevanceResult
 
 class QueryRequest(BaseModel):
     query: str
+    document_id: int
 
 
 class RAGResult(BaseModel):

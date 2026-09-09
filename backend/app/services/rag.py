@@ -34,6 +34,7 @@ class RAGService:
         self,
         session: AsyncSession,
         query: str,
+        document_id: int | None = None,
     ):
 
         chunks = await self.retriever.retrieve(
@@ -41,6 +42,7 @@ class RAGService:
             query=query,
             candidate_k=10,
             top_k=5,
+            document_id=document_id,
         )
 
         if not self.evidence_gate.is_answerable(chunks):

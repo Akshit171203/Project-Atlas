@@ -17,12 +17,14 @@ class RerankedRetriever:
         query: str,
         candidate_k: int = 10,
         top_k: int = 5,
+        document_id: int | None = None,
     ) -> list[RetrievedChunk]:
-        
+
         candidates = await self.retriever.retrieve(
             session=session,
             query=query,
             top_k=candidate_k,
+            document_id=document_id,
         )
 
         return self.reranker.rerank(
