@@ -1,5 +1,7 @@
+from datetime import datetime
+
 from pydantic import BaseModel
-    
+
 
 class Page(BaseModel):
     page_number: int
@@ -17,3 +19,4 @@ class DocumentRecord(BaseModel):
     id: int
     filename: str
     total_pages: int
+    created_at: datetime

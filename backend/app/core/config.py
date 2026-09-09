@@ -18,5 +18,9 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "gemini"
     OLLAMA_MODEL: str = "llama3.1"
 
+    # Bounds worst-case per-call cost regardless of prompt quality — see
+    # backend/COST_OPTIMIZATION.md.
+    LLM_MAX_OUTPUT_TOKENS: int = 500
+
 
 settings = Settings()

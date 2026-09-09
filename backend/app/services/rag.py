@@ -44,6 +44,12 @@ class RAGService:
                 session=session,
                 query=query,
                 candidate_k=10,
+                # Tried top_k=3 to cut token cost (see COST_OPTIMIZATION.md)
+                # but reverted to 5 — the reranker can rank a genuinely
+                # relevant chunk below rank 3 on ambiguous/keyword-collision
+                # queries (see EVIDENCE_GATE_CALIBRATION.md), and top_k=3
+                # cuts it before the LLM ever sees it. 5 trades some cost
+                # back for that recall margin.
                 top_k=5,
                 document_id=document_id,
             )

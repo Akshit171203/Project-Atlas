@@ -48,6 +48,7 @@ class GeminiProvider:
                 config={
                     "system_instruction": system_prompt,
                     "automatic_function_calling": {"disable": True},
+                    "max_output_tokens": settings.LLM_MAX_OUTPUT_TOKENS,
                 },
             )
 
@@ -86,6 +87,7 @@ class OllamaProvider:
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.0,
+                max_tokens=settings.LLM_MAX_OUTPUT_TOKENS,
             )
 
             if response.usage is not None:
