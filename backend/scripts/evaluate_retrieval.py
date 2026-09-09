@@ -59,6 +59,7 @@ async def main():
             case_id = case["id"]
             query = case["query"]
             relevant_chunks = case["relevant_chunks"]
+            document_id = case.get("document_id")
 
             print(f"CASE: {case_id}\n")
 
@@ -74,6 +75,7 @@ async def main():
                 session=session,
                 query=query,
                 top_k=10,
+                document_id=document_id,
             )
 
             vector_ids = [
@@ -113,6 +115,7 @@ async def main():
                     query=query,
                     candidate_k=10,
                     top_k=5,
+                    document_id=document_id,
                 )
             )
 

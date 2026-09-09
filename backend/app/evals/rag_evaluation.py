@@ -15,6 +15,7 @@ async def evaluate_case(
     result = await rag_service.answer(
         session=session,
         query=case["query"],
+        document_id=case.get("document_id"),
     )
 
     expected_answerable = case["answerable"]

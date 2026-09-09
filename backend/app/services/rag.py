@@ -12,6 +12,7 @@ from app.services.context_formatter import ContextFormatter
 from app.services.evidence_gate import EvidenceGate
 from app.services.llm import default_llm
 from app.services.llm_metrics import track_llm_metrics
+from app.services.query_rewriter import query_rewriter
 from app.services.reranked_retrieval import RerankedRetriever
 from app.services.source_registry import SourceRegistry
 from app.schemas.citation import CitationVerificationResult
@@ -53,6 +54,28 @@ class RAGService:
                 top_k=5,
                 document_id=document_id,
             )
+
+            # Query rewriting only runs when the original phrasing already
+            # failed — merging a rewritten variant into every retrieval
+            # (tried first) measurably regressed already-working queries
+            # (5/7 -> 4/7 on the eval suite) by letting a rewritten
+            # phrasing's candidates displace better ones from the original.
+            # Gating it behind an initial failure makes it strictly
+            # additive: it can only turn a failure into a success, never
+            # break a query that was already working. See
+            # EVIDENCE_GATE_CALIBRATION.md.
+            if not self.evidence_gate.is_answerable(chunks):
+                rewritten_query = await query_rewriter.rewrite(query)
+
+                if rewritten_query:
+                    chunks = await self.retriever.retrieve(
+                        session=session,
+                        query=query,
+                        candidate_k=10,
+                        top_k=5,
+                        document_id=document_id,
+                        query_variants=[rewritten_query],
+                    )
 
             if not self.evidence_gate.is_answerable(chunks):
                 return RAGResult(
