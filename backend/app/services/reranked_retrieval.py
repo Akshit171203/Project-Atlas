@@ -78,6 +78,8 @@ class RerankedRetriever:
                 top_k=len(merged),
             )
             for chunk in scored:
+                if chunk.rerank_score is None:
+                    continue
                 current = best_score.get(chunk.chunk_id)
                 if current is None or chunk.rerank_score > current:
                     best_score[chunk.chunk_id] = chunk.rerank_score
