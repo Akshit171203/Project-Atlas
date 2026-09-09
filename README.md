@@ -63,7 +63,7 @@ Two-stage retrieval nearly doubles the chance the correct chunk is ranked
 first. Note that vector-only Recall@3 and Recall@5 are *identical* — when
 the embedding model misses, it misses completely, and no amount of
 reranking recovers a chunk that was never retrieved. That flat line drives
-most of [doc 2](docs/02-retrieval-failures.md).
+most of [doc 2](docs/02-retrieval-failures.txt).
 
 **End-to-end** — 11 cases across 3 documents, ~5 LLM calls each
 ([`evaluate_rag.py`](backend/scripts/evaluate_rag.py)):
@@ -79,7 +79,7 @@ relevant. Correctly refusing an unanswerable question counts as success —
 otherwise every change would be pushed toward answering more.
 
 The three failures are known, root-caused, and written up in
-[doc 8](docs/08-open-problems.md). Two of them had a plausible shared
+[doc 8](docs/08-open-problems.txt). Two of them had a plausible shared
 explanation that turned out to be wrong about both — see below.
 
 ## Architecture
@@ -181,7 +181,7 @@ passes.
 
 So: bi-encoder for recall over everything, cross-encoder to precisely rank
 the ~10 survivors. That's the Recall@1 jump from 0.435 to 0.826 in the
-table above. → [doc 1](docs/01-how-rag-works.md)
+table above. → [doc 1](docs/01-how-rag-works.txt)
 
 ### The reranker isn't as semantic as it sounds
 
@@ -193,7 +193,7 @@ more like a strong fuzzy keyword matcher than a semantic reasoner.
 
 This undermines the assumption that the rerank score just needs the right
 cutoff — a relevant passage can score like noise, and no threshold
-separates it. → [doc 2](docs/02-retrieval-failures.md),
+separates it. → [doc 2](docs/02-retrieval-failures.txt),
 [`EVIDENCE_GATE_CALIBRATION.md`](backend/EVIDENCE_GATE_CALIBRATION.md)
 
 ### A threshold of 0.0 was rejecting real questions
@@ -203,7 +203,7 @@ rank, not to be calibrated, so "positive means relevant" was an intuition
 imported from things that *are* calibrated. Measuring the actual score
 distribution showed genuinely relevant matches as low as **-0.33** and
 off-topic queries at **-10.6 to -11.3**. The threshold moved to **-2.0**,
-in the gap between the clusters. → [doc 3](docs/03-evidence-gate.md)
+in the gap between the clusters. → [doc 3](docs/03-evidence-gate.txt)
 
 ### Verifying against the cited source was the wrong question
 
@@ -215,7 +215,7 @@ verifier reported a hallucination because a number was wrong.
 
 Now every claim is checked against **every** retrieved source. It's
 affordable only because NLI is a free local model. →
-[doc 4](docs/04-hallucination-and-verification.md)
+[doc 4](docs/04-hallucination-and-verification.txt)
 
 ### Only the relevance gate caught the prompt injection
 
@@ -232,7 +232,7 @@ it.
 
 Layered defenses are only worth their cost if they fail *independently*.
 Three gates all checking grounding would be one gate with extra steps. →
-[doc 5](docs/05-relevance-and-prompt-injection.md)
+[doc 5](docs/05-relevance-and-prompt-injection.txt)
 
 ### Two "improvements" made it worse, and the eval caught both
 
@@ -249,7 +249,7 @@ found — and it broke a correct refusal by matching a page header
 
 The lesson: **widening recall widens false positives too**, and vector
 search's semantic nature was silently filtering exactly that class of
-junk. → [doc 2](docs/02-retrieval-failures.md)
+junk. → [doc 2](docs/02-retrieval-failures.txt)
 
 ### A diagnosis that survived until someone ran the model
 
@@ -272,8 +272,8 @@ about both**, and that the two cases are unrelated:
   half entails the whole.**
 
 Neither fix is a better model. Both are chunking and premise construction.
-→ [doc 4](docs/04-hallucination-and-verification.md),
-[doc 8](docs/08-open-problems.md)
+→ [doc 4](docs/04-hallucination-and-verification.txt),
+[doc 8](docs/08-open-problems.txt)
 
 ### Verification costs 73-80 seconds, and that's the honest number
 
@@ -285,7 +285,7 @@ floor, and it's the price of the guarantees.
 
 The relevance call was explicitly protected from cost-cutting — it's ~20%
 of the budget and the only thing that caught the injection. →
-[doc 6](docs/06-cost-and-latency.md),
+[doc 6](docs/06-cost-and-latency.txt),
 [`COST_OPTIMIZATION.md`](backend/COST_OPTIMIZATION.md)
 
 ### Known bugs are kept as *failing* tests
@@ -300,17 +300,17 @@ Its mirror image, `summarize_chapter_known_limitation`, is labeled
 `answerable: False` and passes: refusing it is *correct*, and the case
 exists as a regression guard. It earned its keep — it's what caught the
 keyword-merge experiment turning a correct refusal into an answer. →
-[doc 7](docs/07-evaluation-methodology.md)
+[doc 7](docs/07-evaluation-methodology.txt)
 
 ---
 
 ## Documentation
 
-**[📚 Engineering deep dives (docs/)](docs/README.md)** — nine documents
+**[📚 Engineering deep dives (docs/)](docs/README.txt)** — nine documents
 explaining every problem hit and why each fix worked, written to be read
 after revising fundamentals rather than as a changelog.
 
-New to this area? **[docs/00-prerequisites.md](docs/00-prerequisites.md)**
+New to this area? **[docs/00-prerequisites.md](docs/00-prerequisites.txt)**
 is a revision checklist for a full-stack developer moving into GenAI —
 what already transfers, the honest math minimum (four things), what's safe
 to skip, and the misconceptions this codebase measured and found false.
@@ -330,7 +330,7 @@ Original investigation records, written as the work happened:
   specific questions to specific passages; "summarize chapter 1" has no
   specific content to match, and no chunk *is* a chapter. Fixing it needs
   structure-aware ingestion and a separate code path, not a threshold
-  change. → [doc 8](docs/08-open-problems.md)
+  change. → [doc 8](docs/08-open-problems.txt)
 - **~73-80s per query** on local Ollama. Inherent to five sequential
   calls, not an implementation inefficiency.
 - **Fixed-size chunking** splits mid-word and mid-sentence, which is
