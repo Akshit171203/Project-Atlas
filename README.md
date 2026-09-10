@@ -121,13 +121,22 @@ docker compose up -d
 ollama serve && ollama pull llama3.1
 ```
 
-Create `backend/.env`:
+Create `backend/.env` — copy `backend/.env.example` and fill it in:
 
 ```
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5433/atlas
 LLM_PROVIDER=ollama
 OLLAMA_MODEL=llama3.1
 GEMINI_API_KEY=your-key-here
+JWT_SECRET_KEY=generate-one-see-below
+```
+
+`JWT_SECRET_KEY` has no default and startup fails without it — a signing
+key that falls back to a hard-coded value is a signing key that ships to
+production. Generate one with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
 ```bash
@@ -144,6 +153,10 @@ npm install --prefix frontend && npm run dev --prefix frontend
 
 Open <http://localhost:3000>, drag in a PDF, and ask it something. API
 docs are at <http://localhost:8000/docs>.
+
+**The first account you register becomes the administrator** and adopts
+any documents that were ingested before auth existed. Every account after
+that is a regular user who sees only their own documents.
 
 > **Switching to Gemini** is one line — `LLM_PROVIDER=gemini` in
 > `backend/.env`. No code changes; both providers implement the same
@@ -288,6 +301,21 @@ of the budget and the only thing that caught the injection. →
 [doc 6](docs/06-cost-and-latency.txt),
 [`COST_OPTIMIZATION.md`](backend/COST_OPTIMIZATION.md)
 
+### Authentication that enforces authorization, not just a login screen
+
+Accounts use bcrypt (cost 10) with the session in an **httpOnly cookie**,
+so an XSS bug can't read it — unlike `localStorage`. Documents are owned,
+and ownership is enforced **in the SQL `WHERE` clause** rather than
+compared after fetching, so there is no code path where another user's
+document has been loaded and merely not yet rejected.
+
+Asking for someone else's document returns **404, not 403** — 403 confirms
+the id exists and lets you enumerate the corpus. Email verification uses
+typed tokens signed with a **separate secret** from session tokens,
+because a verification link travels through mail servers in plaintext and
+must not be able to mint a session. →
+[doc 9](docs/09-authentication-and-authorization.txt)
+
 ### Known bugs are kept as *failing* tests
 
 `library_business_known_failure` is labeled `answerable: True` — the true
@@ -306,7 +334,7 @@ keyword-merge experiment turning a correct refusal into an answer. →
 
 ## Documentation
 
-**[📚 Engineering deep dives (docs/)](docs/README.txt)** — nine documents
+**[📚 Engineering deep dives (docs/)](docs/README.txt)** — ten documents
 explaining every problem hit and why each fix worked, written to be read
 after revising fundamentals rather than as a changelog.
 
@@ -335,7 +363,10 @@ Original investigation records, written as the work happened:
   calls, not an implementation inefficiency.
 - **Fixed-size chunking** splits mid-word and mid-sentence, which is
   upstream of two of the three current eval failures.
-- **No auth, no multi-tenancy, no streaming.** Single-user local tool.
+- **No streaming.** `/query` blocks for the full 73-80s and returns
+  everything at once. The answer can't be streamed token-by-token anyway —
+  it isn't trustworthy until verification and repair have run on the
+  complete text.
 - **Backend and frontend types are two hand-maintained sources of truth.**
   OpenAPI codegen is the scale answer.
 

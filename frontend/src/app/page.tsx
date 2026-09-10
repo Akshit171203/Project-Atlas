@@ -9,12 +9,39 @@ import {
   listDocuments,
   uploadDocument,
 } from "@/lib/api";
+import { AuthScreen } from "@/components/AuthScreen";
 import { ChatMessage, ChatPanel } from "@/components/ChatPanel";
 import { DocumentSidebar } from "@/components/DocumentSidebar";
 import { SessionStats } from "@/components/SessionStats";
-import { MenuIcon } from "@/components/icons";
+import { MenuIcon, SpinnerIcon } from "@/components/icons";
+import { useAuth } from "@/lib/auth";
 
 export default function Home() {
+  const { user, checking } = useAuth();
+
+  // Render nothing decisive until the session check resolves. Showing the
+  // sign-in form first and then snapping to the app would flash the login
+  // screen at an already-authenticated user on every refresh.
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-950">
+        <SpinnerIcon className="h-5 w-5 animate-spin text-neutral-700" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
+
+  // Keyed on the user id so every piece of per-session state - documents,
+  // chat history, stats - is thrown away and rebuilt when the account
+  // changes. Without this, signing out and back in as someone else would
+  // leave the previous user's chat history on screen.
+  return <Workspace key={user.id} />;
+}
+
+function Workspace() {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [documentsError, setDocumentsError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -32,6 +59,10 @@ export default function Home() {
       setDocuments(docs);
       setDocumentsError(null);
     } catch (err) {
+      // A 401 means the session expired; the auth provider is already
+      // tearing this view down, so don't flash an error on the way out.
+      if (err instanceof ApiError && err.status === 401) return;
+
       setDocumentsError(
         err instanceof ApiError
           ? `Failed to load documents: ${err.message}`

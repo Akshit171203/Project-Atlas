@@ -13,64 +13,75 @@ New to GenAI and coming from another kind of development? Start with doc 0 -
 it's a revision checklist, including an explicit list of what you can safely
 skip.
 
-  # | Document                                     | What it covers
-  --+----------------------------------------------+--------------------------
-  0 | What to revise before starting               | Prerequisites for a
-    | [docs/00-prerequisites.txt]                  | full-stack dev moving
-    |                                              | into GenAI: what
-    |                                              | transfers, the honest
-    |                                              | math minimum, what to
-    |                                              | skip, and misconceptions
-    |                                              | this project will correct
-  1 | How RAG works, and why this system is built  | Embeddings, cosine
-    | this way [docs/01-how-rag-works.txt]         | similarity, chunking,
-    |                                              | bi-encoders vs
-    |                                              | cross-encoders, NLI, why
-    |                                              | there are three refusal
-    |                                              | gates. Start here.
-  2 | Where retrieval breaks                       | Keyword collision, vector
-    | [docs/02-retrieval-failures.txt]             | search misses, the
-    |                                              | reranker's lexical
-    |                                              | brittleness, query
-    |                                              | rewriting, and the
-    |                                              | hybrid-search experiment
-    |                                              | that was reverted
-  3 | The evidence gate                            | Deciding when not to
-    | [docs/03-evidence-gate.txt]                  | answer; why cross-encoder
-    |                                              | scores aren't
-    |                                              | probabilities and
-    |                                              | thresholds must be
-    |                                              | measured
-  4 | Hallucination and verification               | Claim extraction, NLI
-    | [docs/04-hallucination-and-verification.txt] | entailment, the
-    |                                              | citation-misattribution
-    |                                              | bug, repair, and two
-    |                                              | failing cases whose
-    |                                              | shared diagnosis turned
-    |                                              | out to be wrong about
-    |                                              | both
-  5 | Relevance and prompt injection               | LLM-as-judge, and why the
-    | [docs/05-relevance-and-prompt-injection.txt] | relevance gate - not
-    |                                              | citation verification -
-    |                                              | was the layer that caught
-    |                                              | a prompt-injection attack
-  6 | Cost and latency                             | Why five sequential LLM
-    | [docs/06-cost-and-latency.txt]               | calls cost 73-80s, what
-    |                                              | was optimized, what was
-    |                                              | deliberately left alone,
-    |                                              | and the pluggable
-    |                                              | provider design
-  7 | Evaluation methodology                       | Recall@k and MRR, what
-    | [docs/07-evaluation-methodology.txt]         | "success" means
-    |                                              | end-to-end, and the
-    |                                              | discipline of keeping
-    |                                              | known bugs as failing
-    |                                              | test cases
-  8 | Open problems [docs/08-open-problems.txt]    | The three current
-    |                                              | failures, each
-    |                                              | root-caused, with what
-    |                                              | would fix them and in
-    |                                              | what order
+  # | Document                                       | What it covers
+  --+------------------------------------------------+------------------------
+  0 | What to revise before starting                 | Prerequisites for a
+    | [docs/00-prerequisites.txt]                    | full-stack dev moving
+    |                                                | into GenAI: what
+    |                                                | transfers, the honest
+    |                                                | math minimum, what to
+    |                                                | skip, and
+    |                                                | misconceptions this
+    |                                                | project will correct
+  1 | How RAG works, and why this system is built    | Embeddings, cosine
+    | this way [docs/01-how-rag-works.txt]           | similarity, chunking,
+    |                                                | bi-encoders vs
+    |                                                | cross-encoders, NLI,
+    |                                                | why there are three
+    |                                                | refusal gates. Start
+    |                                                | here.
+  2 | Where retrieval breaks                         | Keyword collision,
+    | [docs/02-retrieval-failures.txt]               | vector search misses,
+    |                                                | the reranker's lexical
+    |                                                | brittleness, query
+    |                                                | rewriting, and the
+    |                                                | hybrid-search
+    |                                                | experiment that was
+    |                                                | reverted
+  3 | The evidence gate [docs/03-evidence-gate.txt]  | Deciding when not to
+    |                                                | answer; why
+    |                                                | cross-encoder scores
+    |                                                | aren't probabilities
+    |                                                | and thresholds must be
+    |                                                | measured
+  4 | Hallucination and verification                 | Claim extraction, NLI
+    | [docs/04-hallucination-and-verification.txt]   | entailment, the
+    |                                                | citation-misattribution
+    |                                                | bug, repair, and two
+    |                                                | failing cases whose
+    |                                                | shared diagnosis turned
+    |                                                | out to be wrong about
+    |                                                | both
+  5 | Relevance and prompt injection                 | LLM-as-judge, and why
+    | [docs/05-relevance-and-prompt-injection.txt]   | the relevance gate -
+    |                                                | not citation
+    |                                                | verification - was the
+    |                                                | layer that caught a
+    |                                                | prompt-injection attack
+  6 | Cost and latency                               | Why five sequential LLM
+    | [docs/06-cost-and-latency.txt]                 | calls cost 73-80s, what
+    |                                                | was optimized, what was
+    |                                                | deliberately left
+    |                                                | alone, and the
+    |                                                | pluggable provider
+    |                                                | design
+  7 | Evaluation methodology                         | Recall@k and MRR, what
+    | [docs/07-evaluation-methodology.txt]           | "success" means
+    |                                                | end-to-end, and the
+    |                                                | discipline of keeping
+    |                                                | known bugs as failing
+    |                                                | test cases
+  8 | Open problems [docs/08-open-problems.txt]      | The three current
+    |                                                | failures, each
+    |                                                | root-caused, with what
+    |                                                | would fix them and in
+    |                                                | what order
+  9 | Authentication and authorization               | Password hashing, JWTs
+    | [docs/09-authentication-and-authorization.txt] | and httpOnly cookies,
+    |                                                | ownership enforced in
+    |                                                | SQL, 404-vs-403, and
+    |                                                | email verification with
+    |                                                | typed tokens
 
 THE ORIGINAL INVESTIGATION RECORDS
 ==================================
@@ -99,3 +110,8 @@ IF YOU ONLY READ THREE THINGS
   3. Doc 4's corrected diagnosis [docs/04-hallucination-and-verification.txt]
      - two failures that looked identical, shared one plausible explanation,
      and turned out to be unrelated bugs. Neither matched the explanation.
+
+And if you are adding auth to something, doc 9's Part 3
+[docs/09-authentication-and-authorization.txt] on oracles - why "no such user"
+and "wrong password" must return the same message, and why the verified check
+has to run after the password check.

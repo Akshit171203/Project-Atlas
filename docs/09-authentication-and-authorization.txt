@@ -1,0 +1,476 @@
+==============================================================================
+9. AUTHENTICATION AND AUTHORIZATION
+==============================================================================
+
+    | Code: backend/app/services/auth.py, backend/app/api/auth.py,
+    | backend/app/api/dependencies.py, backend/app/models/user.py,
+    | frontend/src/lib/auth.tsx
+
+Ported from a working Express/Drizzle implementation into FastAPI +
+SQLAlchemy. The patterns are the same; almost none of the code is, because the
+two stacks express them differently. This document is about the patterns.
+
+THE PROBLEM
+===========
+
+Before this, Atlas had no concept of a user. GET /documents returned every
+document in the database to anybody who asked, and POST /query would answer
+questions about any document_id you passed it.
+
+That second one is the sharp end. Query responses quote retrieved chunks back
+in the answer text, so an unprotected /query doesn't just leak which documents
+exist - it leaks their contents, a few hundred characters at a time, to anyone
+who can guess an integer.
+
+THE DISTINCTION THAT STRUCTURES EVERYTHING
+==========================================
+
+Authentication is who are you. Authorization is what are you allowed to do.
+
+They are separate problems with separate failure modes, and conflating them is
+how systems end up with a login page and no actual security. A system can
+authenticate perfectly and still let any logged-in user read everyone else's
+data - which is exactly what you get if you add a login screen and stop there.
+
+Concretely in this codebase:
+
+  - Authentication lives in get_current_user [backend/app/api/dependencies.py]
+    - verify the cookie, resolve a User, or 401.
+  - Authorization lives in the query layer - DocumentRepository.get_for_user
+    and list_for_user, which filter by owner in SQL, plus require_admin for
+    role checks.
+
+The HTTP status codes track the distinction: 401 means "I don't know who you
+are", 403 means "I know exactly who you are and the answer is no." Returning
+401 to a logged-in user who lacks permission tells them to log in again, which
+never fixes anything.
+
+------------------------------------------------------------------------------
+
+PART 1 - AUTHENTICATION
+=======================
+
+  Passwords: why bcrypt and not a hash you've heard of
+  ----------------------------------------------------
+
+The instinct is sha256(password). That is broken, and understanding why
+explains every design choice in password storage.
+
+SHA-256 is fast. That is its purpose - it is built to hash large amounts of
+data quickly. Consumer hardware does billions of SHA-256 operations per
+second. So an attacker holding your stolen database can try billions of
+candidate passwords per second against it.
+
+bcrypt is deliberately slow, and tunably so. The cost factor is an exponent:
+cost 10 means 2^10 = 1024 rounds of internal key setup. Each +1 doubles the
+work. At cost 10 a single check takes roughly 100ms, so that same attacker
+manages perhaps 10 guesses per second per core instead of billions.
+
+You are not making cracking impossible. You are making it uneconomic.
+
+    salt = bcrypt.gensalt(rounds=10)
+    return bcrypt.hashpw(password.encode(), salt).decode()
+
+The salt is the second half of the story. Without one, identical passwords
+produce identical hashes - so an attacker sorts the stolen table, sees 4,000
+accounts sharing a hash, and knows they all picked the same common password.
+Worse, a rainbow table (precomputed hashes for billions of common passwords)
+cracks the lot in one lookup.
+
+A salt is random per-password data mixed in before hashing. Identical
+passwords now produce different hashes, and a precomputed table is useless
+because it would have to be recomputed for every distinct salt.
+
+bcrypt stores the salt inside the output string, which is why checkpw needs
+only the hash - it reads the cost and salt back out of it:
+
+    $2b$10$N9qo8uLOickgx2ZMRZoMye...
+     |   |  +-- salt + hash
+     |   +-- cost factor (10)
+     +-- algorithm variant
+
+The reference implementation stored a separate salt column. That's harmless
+but redundant; this port drops it.
+
+The 72-byte limit. bcrypt silently truncates input past 72 bytes - a
+201-character password is validated on its first 72 characters only, with no
+error. backend/app/schemas/auth.py rejects longer input rather than accepting
+it and quietly ignoring most of it.
+
+  Sessions: what a JWT actually is
+  --------------------------------
+
+A JSON Web Token is three base64 segments joined by dots:
+
+    eyJhbGciOiJIUzI1NiJ9  .  eyJzdWIiOiJhM2Uw...  .  _fHyOuYQsPYK4Q0jf
+        header                    payload                signature
+       {"alg":"HS256"}      {"sub":"<user id>",
+                             "exp": 1789052900}
+
+The first two parts are not encrypted - they are merely encoded. Anyone
+holding a token can read its payload. Never put anything secret in it.
+
+What makes it useful is the third part. The signature is HMAC-SHA256(header +
+payload, secret). Change one character of the payload and the signature no
+longer matches, and only someone holding the secret can compute a valid
+replacement. So the server can hand out a token and later trust its contents
+without storing anything.
+
+That statelessness is the appeal and also the catch: since nothing is stored
+server-side, there is no way to revoke a JWT before it expires. That's why
+JWT_EXPIRE_MINUTES is 60 rather than 30 days.
+
+  The alg=none attack, and the one line that stops it
+  ---------------------------------------------------
+
+The header declares its own algorithm. Early JWT libraries trusted that
+declaration - so an attacker could rewrite the header to {"alg":"none"}, strip
+the signature, and be believed.
+
+    jwt.decode(token, settings.JWT_SECRET_KEY,
+               algorithms=[settings.JWT_ALGORITHM])
+
+algorithms=[...] is an allow-list, not a hint. It says "no matter what this
+token claims about itself, verify it as HS256 or reject it." The same class of
+bug allowed algorithm confusion attacks, where a token signed with the
+server's public RSA key as an HMAC secret was accepted as valid.
+
+This is tested, not assumed - a forged alg=none token is one of the cases in
+the test run below, and it returns 401.
+
+  Where the token lives: httpOnly cookie, not localStorage
+  --------------------------------------------------------
+
+This is the choice most tutorials get wrong.
+
+                         | localStorage             | httpOnly cookie
+  -----------------------+--------------------------+-------------------------
+  Readable by JavaScript | yes                      | no
+  Survives XSS           | no - attacker            | yes - script cannot read
+                         | exfiltrates it           | it
+  Sent automatically     | no, you attach it by     | yes, by the browser
+                         | hand                     |
+  Vulnerable to CSRF     | no                       | yes, without mitigation
+
+If an attacker gets any script running on your page, localStorage is readable
+and the session is gone. An httpOnly cookie is invisible to JavaScript - the
+browser attaches it to requests without ever exposing its value.
+
+The trade is CSRF: since the browser sends the cookie automatically, a
+malicious site could trigger authenticated requests. samesite="lax" blocks the
+cross-site cases that matter, and in production secure=True stops it
+travelling over plain HTTP. Note COOKIE_SECURE must stay false on localhost -
+a secure cookie over plain HTTP is silently dropped, producing a login that
+appears to succeed and then 401s on every subsequent call.
+
+  Re-reading the user on every request
+  ------------------------------------
+
+    payload = decode_access_token(token)
+    user = await user_repository.get(session=session, user_id=user_id)
+
+The role could have been read straight from the token - it's right there,
+signed and tamper-proof, and skipping the query would be faster.
+
+But a JWT is a snapshot of who you were when it was signed. Demote an admin,
+or delete an account, and any token issued beforehand still asserts the old
+truth until it expires. Re-reading costs one indexed primary-key lookup and
+means permission changes take effect immediately.
+
+That is the pragmatic middle ground between pure stateless JWT (fast,
+unrevocable) and server-side sessions (revocable, needs a session store).
+
+------------------------------------------------------------------------------
+
+PART 2 - AUTHORIZATION
+======================
+
+  Ownership enforced in SQL, not in Python
+  ----------------------------------------
+
+    select(Document).where(
+        Document.id == document_id,
+        Document.user_id == user_id,
+    )
+
+The obvious alternative is to fetch the document, then compare
+document.user_id != user.id and raise. It works - until someone adds a code
+path that forgets the check, or checks it after already acting on the row.
+
+Filtering in the WHERE clause makes the unsafe state unrepresentable: there is
+no moment where another user's document is loaded in memory and merely not yet
+rejected. The wrong row is never fetched at all.
+
+Make the safe thing structural rather than remembered.
+
+  404, not 403, for someone else's document
+  -----------------------------------------
+
+    # 404 rather than 403 for a document owned by someone else
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+403 says "this exists and you can't have it," which is an oracle: walk
+document_id from 1 upward, note which return 403 versus 404, and you've mapped
+how many documents the system holds and when they were added - all without
+reading a single one.
+
+To a non-owner, the document simply doesn't exist. This costs a little
+diagnostic clarity for a legitimate user who mistypes an id, which is the
+right trade.
+
+  Roles
+  -----
+
+require_admin is a FastAPI dependency wrapping get_current_user, so a
+protected route composes them:
+
+    async def list_users(_: User = Depends(require_admin)):
+
+The dependency is declared in the signature, so the check cannot be forgotten
+in a function body - the route does not run at all unless it passes. Two roles
+(ADMIN, USER) is genuinely enough here; a permissions table would be
+speculative.
+
+  Bootstrapping the first administrator
+  -------------------------------------
+
+Every RBAC system faces this: roles are granted by an admin, so who creates
+the first one?
+
+The options are a hard-coded default admin (ships a known credential), a CLI
+command (another surface to build), or a migration that seeds a user - which
+means inventing a password hash nobody can use.
+
+The choice here: the first account to register becomes ADMIN, decided in
+signup rather than in the schema.
+
+    is_first_user = await user_repository.count(session=session) == 0
+
+It also solves a second problem. Atlas already held 5 documents with no owner,
+and user_id had to be nullable for the migration to apply to existing rows. So
+the first user adopts them:
+
+    update(Document).where(Document.user_id.is_(None)).values(user_id=user_id)
+
+This keeps the eval corpus reachable through the API instead of stranding it.
+Note the obvious weakness - on a public deployment, whoever registers first
+gets admin. Fine for a local single-user tool; it would need an invite or
+setup token before this is exposed anywhere.
+
+------------------------------------------------------------------------------
+
+PART 3 - NOT LEAKING WHAT YOU KNOW
+==================================
+
+An oracle is any endpoint that answers a question you didn't intend to expose.
+Login forms are the classic case.
+
+    invalid = HTTPException(status_code=401, detail="Invalid email or password.")
+
+"No such user" and "wrong password" return the same message. Split them and
+the form becomes an account-existence checker: feed it an email list, note
+which say "wrong password", and you have a confirmed set of registered users -
+useful for credential stuffing and phishing.
+
+The same reasoning shapes /auth/resend-verification, which replies identically
+whether the account is missing, unverified, or already verified:
+
+    | "If that address needs verifying, a new link is on its way."
+
+And the ordering in login matters. The verified check runs after the password
+check:
+
+    if not verify_password(...): raise invalid          # 401
+    if REQUIRE_EMAIL_VERIFICATION and not user.verified:  # 403
+
+Reversed, a wrong password on an unverified account would return 403 and
+reveal both that the account exists and what state it's in - to someone who
+just proved they don't know the password. Verified as its own test case below.
+
+    | A caveat worth naming: identical messages are not identical behaviour. A
+    | real account runs bcrypt (~100ms); a missing one returns immediately.
+    | That timing difference is a subtler oracle, closable by hashing a dummy
+    | password on the missing-account path. Not implemented - named honestly
+    | rather than papered over.
+
+------------------------------------------------------------------------------
+
+PART 4 - EMAIL VERIFICATION
+===========================
+
+  Typed tokens, and a second secret
+  ---------------------------------
+
+Verification links carry a JWT, like sessions, but with two deliberate
+differences.
+
+A type claim:
+
+    payload = {"sub": user_id, "type": "emailVerification", ...}
+
+checked on the way back in. This stops a token minted for one purpose being
+replayed for another - a verification link used as a password-reset token, say
+- even when both are signed with the same key.
+
+A separate secret (EMAIL_TOKEN_SECRET, not JWT_SECRET_KEY). This matters more
+than it looks. A session cookie lives in one browser, marked httpOnly. A
+verification link is emailed in plaintext, sits in an inbox, traverses mail
+servers, and lands in logs and browser history. It lives somewhere far less
+trusted.
+
+Sharing one secret would mean a leak from that much weaker channel could mint
+session tokens. Separate secrets contain the blast radius: the worst case
+becomes "an attacker can verify email addresses," not "an attacker can log in
+as anyone."
+
+Confirmed by test: a valid session token submitted to /auth/verify-email
+returns 400. Different secret, wrong type, rejected twice over.
+
+  Verifying twice must succeed
+  ----------------------------
+
+    if not user.verified:
+        await user_repository.mark_verified(...)
+    return MessageResponse(message="Email verified. You can now sign in.")
+
+Not an oversight - idempotency. Mail clients and security scanners pre-fetch
+links before a human clicks. Corporate filters follow every URL in a message.
+If the first automated fetch consumed the token, the real user would click and
+be told their link was invalid.
+
+The rule generalizes: any operation reachable by a link someone might follow
+more than once should be safe to repeat.
+
+  The console mailer
+  ------------------
+
+backend/app/services/mailer.py logs the message instead of sending it when
+SMTP_HOST is empty.
+
+This is not a stub. It is a standard development path - Django ships the same
+idea as its console email backend. It means the entire flow (signup -> link ->
+verify -> login) is exercisable with no mail account, no credentials in a
+config file, and no third-party signup. Turning on real delivery is filling in
+.env; no code changes.
+
+Two details in there worth keeping:
+
+    await asyncio.to_thread(_send_sync, message)
+
+smtplib is blocking. Called directly in an async handler it stalls the event
+loop for the entire SMTP round trip - freezing every concurrent request, not
+just this one. to_thread moves it off the loop.
+
+    except Exception:
+        logger.exception("Failed to send email to %s", to)
+
+A mail failure must not fail the request that triggered it. A signup that
+creates the account and then 500s on the email leaves the user with an account
+they can't verify and no obvious way forward. Logging and offering a resend
+button is the better failure.
+
+------------------------------------------------------------------------------
+
+PART 5 - WHAT THE FRONTEND HAS TO DO DIFFERENTLY
+================================================
+
+  httpOnly means you must ask the server
+  --------------------------------------
+
+The cookie is invisible to JavaScript, so there is no way to check "am I
+logged in?" locally. The app calls /auth/me on mount instead.
+
+That feels like a regression until you remember it is the point: if your own
+code can't read the session, neither can injected code.
+
+  credentials: "include" on every request
+  ---------------------------------------
+
+    const withCredentials: RequestInit = { credentials: "include" };
+
+The single most common way this integration breaks. Browsers do not attach
+cookies to cross-origin requests by default, and :3000 -> :8000 is cross-
+origin. Without this every call returns 401 with a perfectly valid cookie
+sitting in the jar.
+
+It pairs with allow_credentials=True in the backend's CORS middleware - and
+that in turn is why allow_origins cannot be "*". Browsers reject the wildcard
+when credentials are enabled, so origins must be listed explicitly.
+
+  One 401 handler, not thirty
+  ---------------------------
+
+Tokens expire after an hour, which can happen with the tab open. Rather than
+have every caller handle that, the API client exposes a hook that the auth
+provider registers, fired from the single place every response already passes
+through. One 401 anywhere drops the user back to sign-in.
+
+  <Workspace key={user.id} />
+  ---------------------------
+
+Changing a React key unmounts the old component and mounts a fresh one,
+discarding all its state. Without it, signing out and back in as someone else
+would leave the previous user's chat history on screen - a real leak, since
+chat history is client-side only and the backend is stateless per-query.
+
+------------------------------------------------------------------------------
+
+WHAT IS DELIBERATELY NOT BUILT
+==============================
+
+  - Password change and reset. The biggest gap. EMAIL_TOKEN_SECRET and the
+    typed-token machinery already support it - a passwordReset type and two
+    endpoints - but it isn't wired up.
+  - OAuth (Google/GitHub). The reference implementation has both. Needs client
+    credentials, so it was left out of this pass.
+  - Rate limiting. The reference uses Redis INCR + EXPIRE keyed by route and
+    IP. Atlas has no Redis service. Login is currently unthrottled, which is
+    the most exposed omission here.
+  - Refresh tokens. One hour, then you log in again. Real apps pair a short
+    access token with a long-lived refresh token.
+  - Timing-safe login. See the caveat in Part 3.
+  - Per-user upload quotas. Any authenticated user can upload without limit.
+
+------------------------------------------------------------------------------
+
+HOW THIS WAS TESTED
+===================
+
+Every claim above was exercised against a running stack, not reasoned about:
+
+  Check                             | Expected                         | Got
+  ----------------------------------+----------------------------------+------
+  /documents, /auth/me,             | 401                              | [yes]
+  /admin/users, /query with no      |                                  |
+  cookie                            |                                  |
+  First signup                      | ADMIN + adopts 5 orphaned        | [yes]
+                                    | documents                        |
+  Second signup                     | USER, sees 0 documents           | [yes]
+  User B queries user A's document  | 404                              | [yes]
+  User B deletes user A's document  | 404                              | [yes]
+  /admin/users as USER              | 403                              | [yes]
+  Tampered signature / garbage /    | 401                              | [yes]
+  alg=none                          |                                  |
+  Unknown email vs wrong password   | identical message                | [yes]
+  Signup while verification         | no cookie issued                 | [yes]
+  required                          |                                  |
+  Login before verifying            | 403                              | [yes]
+  Wrong password on unverified      | 401, not 403                     | [yes]
+  account                           |                                  |
+  Session token used as             | 400                              | [yes]
+  verification token                |                                  |
+  Verification link clicked twice   | 200                              | [yes]
+  Resend for missing / verified /   | identical reply                  | [yes]
+  unverified                        |                                  |
+
+And the regression check that matters for this project: the end-to-end RAG
+eval stayed at 8/11 with repair rate 0.455, and retrieval at Recall@1 0.826 /
+MRR 0.906 - identical to the pre-auth baseline, case for case. Adding
+documents.user_id touched the model that selectinload(Chunk.document) depends
+on, so this was a real risk, not a formality. See doc 7 [docs/07-evaluation-
+methodology.txt].
+
+------------------------------------------------------------------------------
+
+Back to: README [docs/README.txt]

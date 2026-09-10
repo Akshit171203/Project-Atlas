@@ -45,6 +45,24 @@ export interface RAGResult {
   rejected: boolean;
 }
 
+export type UserRole = "ADMIN" | "USER";
+
+export interface UserRecord {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  verified: boolean;
+  created_at: string;
+}
+
+export interface SignupResponse {
+  user: UserRecord;
+  /** False when the account must verify its email before signing in. */
+  authenticated: boolean;
+  message: string;
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -54,7 +72,21 @@ export class ApiError extends Error {
   }
 }
 
+// The session cookie expires after JWT_EXPIRE_MINUTES, which can happen
+// mid-session while the tab is open. Rather than let every caller handle
+// that separately, the auth provider registers here and gets told once,
+// from the single place every response already passes through.
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    onUnauthorized?.();
+  }
+
   if (!response.ok) {
     let detail = response.statusText;
     try {
@@ -74,8 +106,14 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+// Without credentials: "include" the browser never attaches the session
+// cookie to a cross-origin request (:3000 -> :8000), so every call would
+// come back 401 even with a perfectly valid cookie set. It is required on
+// every request, not just the auth ones.
+const withCredentials: RequestInit = { credentials: "include" };
+
 export async function listDocuments(): Promise<DocumentRecord[]> {
-  const response = await fetch(`${API_URL}/documents`);
+  const response = await fetch(`${API_URL}/documents`, withCredentials);
   return handleResponse<DocumentRecord[]>(response);
 }
 
@@ -90,7 +128,10 @@ export async function uploadDocument(file: File): Promise<{
   formData.append("file", file);
 
   const response = await fetch(`${API_URL}/documents/upload`, {
+    ...withCredentials,
     method: "POST",
+    // Content-Type is deliberately not set: the browser has to generate the
+    // multipart boundary itself, and setting it by hand breaks the upload.
     body: formData,
   });
 
@@ -99,6 +140,7 @@ export async function uploadDocument(file: File): Promise<{
 
 export async function deleteDocument(documentId: number): Promise<void> {
   const response = await fetch(`${API_URL}/documents/${documentId}`, {
+    ...withCredentials,
     method: "DELETE",
   });
   return handleResponse<void>(response);
@@ -109,10 +151,73 @@ export async function askQuestion(
   documentId: number,
 ): Promise<RAGResult> {
   const response = await fetch(`${API_URL}/query`, {
+    ...withCredentials,
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, document_id: documentId }),
   });
 
   return handleResponse<RAGResult>(response);
+}
+
+// --- Auth -----------------------------------------------------------------
+
+export async function signup(
+  name: string,
+  email: string,
+  password: string,
+): Promise<SignupResponse> {
+  const response = await fetch(`${API_URL}/auth/signup`, {
+    ...withCredentials,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, password }),
+  });
+  return handleResponse<SignupResponse>(response);
+}
+
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+  const response = await fetch(
+    `${API_URL}/auth/verify-email?token=${encodeURIComponent(token)}`,
+    withCredentials,
+  );
+  return handleResponse<{ message: string }>(response);
+}
+
+export async function resendVerification(
+  email: string,
+): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/auth/resend-verification`, {
+    ...withCredentials,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  return handleResponse<{ message: string }>(response);
+}
+
+export async function login(
+  email: string,
+  password: string,
+): Promise<UserRecord> {
+  const response = await fetch(`${API_URL}/auth/login`, {
+    ...withCredentials,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  return handleResponse<UserRecord>(response);
+}
+
+export async function logout(): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/logout`, {
+    ...withCredentials,
+    method: "POST",
+  });
+  return handleResponse<void>(response);
+}
+
+export async function getMe(): Promise<UserRecord> {
+  const response = await fetch(`${API_URL}/auth/me`, withCredentials);
+  return handleResponse<UserRecord>(response);
 }

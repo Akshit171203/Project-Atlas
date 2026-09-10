@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -28,6 +29,7 @@ class IngestionService:
         self,
         session: AsyncSession,
         file: UploadFile,
+        user_id: uuid.UUID,
     ):
 
         stored_file = await self.storage.save(file)
@@ -43,6 +45,7 @@ class IngestionService:
                 session=session,
                 filename=document_content.filename,
                 total_pages=document_content.total_pages,
+                user_id=user_id,
             )
 
             await self.chunk_repository.create_many(

@@ -3,7 +3,15 @@
 import { useRef, useState } from "react";
 import { DocumentRecord } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
-import { FileIcon, SpinnerIcon, TrashIcon, UploadIcon, XIcon } from "./icons";
+import { useAuth } from "@/lib/auth";
+import {
+  FileIcon,
+  LogOutIcon,
+  SpinnerIcon,
+  TrashIcon,
+  UploadIcon,
+  XIcon,
+} from "./icons";
 
 export function DocumentSidebar({
   documents,
@@ -172,6 +180,68 @@ export function DocumentSidebar({
           })}
         </ul>
       </div>
+
+      <AccountFooter />
     </aside>
+  );
+}
+
+function AccountFooter() {
+  const { user, logout } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
+
+  if (!user) return null;
+
+  async function handleLogout() {
+    setSigningOut(true);
+    try {
+      await logout();
+    } finally {
+      // No need to clear the flag on success — logging out unmounts this
+      // whole tree.
+      setSigningOut(false);
+    }
+  }
+
+  const initial = (user.name || user.email).charAt(0).toUpperCase();
+
+  return (
+    <div className="flex items-center gap-2.5 border-t border-neutral-800/80 px-4 py-3">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-xs font-semibold text-neutral-300">
+        {initial}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span
+            className="truncate text-xs font-medium text-neutral-200"
+            title={user.name}
+          >
+            {user.name}
+          </span>
+          {user.role === "ADMIN" && (
+            <span className="shrink-0 rounded-full border border-indigo-800 bg-indigo-500/10 px-1.5 py-px text-[10px] font-medium text-indigo-400">
+              admin
+            </span>
+          )}
+        </div>
+        <span className="block truncate text-[11px] text-neutral-600" title={user.email}>
+          {user.email}
+        </span>
+      </div>
+
+      <button
+        onClick={handleLogout}
+        disabled={signingOut}
+        title="Sign out"
+        className="shrink-0 rounded-md p-1.5 text-neutral-600 transition-colors hover:bg-neutral-900 hover:text-neutral-300 disabled:opacity-50"
+      >
+        {signingOut ? (
+          <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <LogOutIcon className="h-3.5 w-3.5" />
+        )}
+      </button>
+    </div>
   );
 }
